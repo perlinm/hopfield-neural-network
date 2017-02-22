@@ -1,0 +1,11 @@
+.#*
+\#*#
+*\~
+*.tum
+*.o
+*.exe
+*.pdf
+TAGS
+__pycache__
+*.pyc
+*Notes.bib
