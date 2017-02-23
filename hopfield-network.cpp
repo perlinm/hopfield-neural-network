@@ -24,17 +24,18 @@ vector<bool> random_state(const uint nodes, uniform_real_distribution<double>& r
 // note: these couplings are a factor of [nodes] greater than the regular definition
 MatrixXi get_coupling_matrix(std::vector<std::vector<bool>> patterns) {
   const uint nodes = patterns.at(0).size();
-  MatrixXi correlation(nodes,nodes);
+  MatrixXi coupling(nodes,nodes);
 
   for (uint ii = 0; ii < nodes; ii++) {
     for (uint jj = 0; jj < nodes; jj++) {
       for (uint pp = 0; pp < patterns.size(); pp++) {
-        correlation(ii,jj) += (2*patterns.at(pp).at(ii)-1)*(2*patterns.at(pp).at(jj)-1);
+        coupling(ii,jj) += (2*patterns.at(pp).at(ii)-1)*(2*patterns.at(pp).at(jj)-1);
       }
     }
+    coupling(ii,ii) = 0;
   }
 
-  return correlation;
+  return coupling;
 }
 
 // hopfield network constructor
@@ -42,6 +43,7 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns,
                                    const vector<bool>& initial_state) :
   patterns(patterns),
   coupling(get_coupling_matrix(patterns)),
-  nodes(patterns.at(0).size()) {
+  nodes(patterns.at(0).size())
+{
   state = initial_state;
 };

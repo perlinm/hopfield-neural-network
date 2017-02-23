@@ -108,14 +108,6 @@ int main(const int arg_num, const char *arg_vec[]) {
       patterns.push_back(pattern);
     }
 
-    for (uint ii = 1; ii < patterns.size(); ii++) {
-      if (patterns.at(ii-1).size() != patterns.at(ii).size()){
-        cout << "patterns " << ii-1 << " and " << ii
-             << " do not have the same size!" << endl;
-        return -1;
-      }
-    }
-
   } else { // if we are not using a pattern file, generate random patterns
 
     for (uint ii = 0; ii < pattern_number; ii++) {
@@ -124,27 +116,27 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   }
 
+  for (uint ii = 1; ii < patterns.size(); ii++) {
+    if (patterns.at(ii-1).size() != patterns.at(ii).size()){
+      cout << "patterns " << ii-1 << " and " << ii
+           << " do not have the same size!" << endl;
+      return -1;
+    }
+  }
+  pattern_number = patterns.size();
+  nodes = patterns.at(0).size();
+
   hopfield_network network(patterns, random_state(nodes, rnd, generator));
 
-  for (uint ii = 0; ii < network.patterns.size(); ii++) {
-    for (uint jj = 0; jj < network.patterns.at(ii).size(); jj++) {
-      cout << network.patterns.at(ii).at(jj) << " ";
-    }
-    cout << endl;
-  }
+  const int energy_range = 2 * network.coupling.array().abs().sum();
+  const int max_energy_range = 2 * pattern_number * nodes * (nodes - 1);
 
-  cout << endl;
-  for (uint ii = 0; ii < network.coupling.rows(); ii++) {
-    for (uint jj = 0; jj < network.coupling.cols(); jj++) {
-      cout << network.coupling(ii,jj) << " ";
-    }
-    cout << endl << endl;
-  }
+  network.print_patterns();
+  network.print_couplings();
+  network.print_state();
 
-  for (uint ii = 0; ii < nodes; ii++) {
-    cout << network.state.at(ii) << " ";
-  }
-  cout << endl;
-  cout << network.energy() << endl;
+  cout << "initial network energy: " << network.energy() << endl;
+  cout << "energy range: " << energy_range << endl;
+  cout << "max possible enery range: " << max_energy_range << endl;
 
 }
