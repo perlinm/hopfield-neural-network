@@ -18,19 +18,21 @@ vector<bool> random_state(const uint nodes, uniform_real_distribution<double>& r
 // note: these couplings are a factor of [nodes] greater than the regular definition
 MatrixXi get_couplings(vector<vector<bool>> patterns);
 
-// hopfield network object
+// get maximum energy change possible in one spin flip with given interaction matrix
+uint get_max_energy_change(const MatrixXi& couplings);
+
 struct hopfield_network {
 
+  const uint nodes;
   const vector<vector<bool>> patterns;
   const MatrixXi couplings;
-  const uint nodes;
 
-  hopfield_network(const vector<vector<bool>>& patterns,
-                   const vector<bool>& initial_state);
+  const uint max_energy;
+  const uint max_energy_change;
 
-  vector<bool> state;
+  hopfield_network(const vector<vector<bool>>& patterns);
 
-  void print_patterns() {
+  void print_patterns() const {
     for (uint ii = 0; ii < patterns.size(); ii++) {
       for (uint jj = 0; jj < nodes; jj++) {
         cout << patterns.at(ii).at(jj) << " ";
@@ -40,7 +42,7 @@ struct hopfield_network {
     cout << endl;
   }
 
-  void print_couplings() {
+   void print_couplings() const {
     const uint width = log10(couplings.array().abs().maxCoeff()) + 2;
     for (uint ii = 0; ii < nodes; ii++) {
       for (uint jj = 0; jj < nodes; jj++) {
@@ -51,32 +53,44 @@ struct hopfield_network {
     cout << endl;
   }
 
-  void print_state() {
-    for (uint ii = 0; ii < nodes; ii++) {
-      cout << state.at(ii) << " ";
-    }
-    cout << endl << endl;
-  }
+};
+
+// network simulation object
+struct network_simulation {
+
+  const hopfield_network network;
+  const uint probability_factor;
+
+  vector<bool> state;
+  vector<uint> energy_histogram;
+  MatrixXi transition_matrix;
+
+  network_simulation(const vector<vector<bool>>& patterns,
+                     const vector<bool>& initial_state,
+                     const uint probability_factor);
 
   // energy of network in its current state
   // note: this energy is a factor of [2*nodes] greater than the regular definition
   int energy(vector<bool>& state);
-  int energy() { return energy(state); }
+  int energy() { return energy(state); };
 
-};
+  // observations of a given energy
+  uint energy_observations(const int energy) const {
+    return energy_histogram.at(energy + network.max_energy);
+  }
 
-// transition matrix object
-struct transition_matrix {
+  // transitions from given energy with specified energy change
+  uint transitions(const int energy, const int energy_change) const {
+    return transition_matrix(energy + network.max_energy,
+                             energy_change + network.max_energy_change);
+  }
 
-  MatrixXi matrix;
-
-  transition_matrix(const MatrixXi& couplings);
-
-  uint energy_range() { return matrix.rows(); };
-  uint max_energy_change() { return matrix.cols()/2; };
-
-  uint operator()(const int energy, const int energy_change) {
-    return matrix(energy + matrix.rows()/2, energy_change + matrix.cols()/2);
+  // print current state of network
+  void print_state() const {
+    for (uint ii = 0; ii < state.size(); ii++) {
+      cout << state.at(ii) << " ";
+    }
+    cout << endl << endl;
   }
 
 };

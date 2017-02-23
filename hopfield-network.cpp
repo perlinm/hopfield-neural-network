@@ -38,38 +38,45 @@ MatrixXi get_coupling_matrix(std::vector<std::vector<bool>> patterns) {
   return coupling;
 }
 
+// get maximum energy change possible in one spin flip with given interaction matrix
+uint get_max_energy_change(const MatrixXi& couplings){
+  int max_change = 0;
+  for (uint ii = 0; ii < couplings.rows(); ii++) {
+    max_change = max(couplings.row(ii).array().abs().sum(), max_change);
+  }
+  return max_change;
+}
+
 // hopfield network constructor
-hopfield_network::hopfield_network(const vector<vector<bool>>& patterns,
-                                   const vector<bool>& initial_state) :
+hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) :
+  nodes(patterns.at(0).size()),
   patterns(patterns),
   couplings(get_coupling_matrix(patterns)),
-  nodes(patterns.at(0).size())
+  max_energy(couplings.array().abs().sum()),
+  max_energy_change(get_max_energy_change(couplings))
+{};
+
+
+// network simulation constructor
+network_simulation::network_simulation(const vector<vector<bool>>& patterns,
+                                       const vector<bool>& initial_state,
+                                       const uint probability_factor) :
+  network(hopfield_network(patterns)), probability_factor(probability_factor)
 {
   state = initial_state;
+  energy_histogram = vector<uint>(2*network.max_energy + 1);
+  transition_matrix = MatrixXi::Zero(2*network.max_energy + 1,
+                                     2*network.max_energy_change + 1);
 };
 
 // energy of network in its current state
 // note: this energy is a factor of [2*nodes] greater than the regular definition
-int hopfield_network::energy(vector<bool>& state) {
+int network_simulation::energy(vector<bool>& state) {
   int sum = 0;
-  for (uint ii = 0; ii < nodes; ii++) {
-    for (uint jj = 0; jj < nodes; jj++) {
-      sum += couplings(ii,jj) * (2*state.at(ii)-1) * (2*state.at(jj)-1);
+  for (uint ii = 0; ii < network.nodes; ii++) {
+    for (uint jj = 0; jj < network.nodes; jj++) {
+      sum += network.couplings(ii,jj) * (2*state.at(ii)-1) * (2*state.at(jj)-1);
     }
   }
   return -sum;
-}
-
-transition_matrix::transition_matrix(const MatrixXi& couplings) {
-  const int max_energy = couplings.array().abs().sum();
-  const int max_energy_increase = [&]() -> int {
-    int max_increase = 0;
-    for (uint ii = 0; ii < couplings.rows(); ii++) {
-      max_increase = max(couplings.row(ii).array().abs().sum(),max_increase);
-    }
-    return max_increase;
-  }();
-
-  matrix = MatrixXi::Zero(2*max_energy + 1, 2*max_energy_increase + 1);
-
 }

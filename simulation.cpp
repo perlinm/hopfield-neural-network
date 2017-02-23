@@ -46,6 +46,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   string pattern_file;
   uint nodes = 0;
   uint pattern_number = 0;
+  uint probability_factor;
 
   po::options_description simulation_options("Simulation options",help_text_length);
   simulation_options.add_options()
@@ -53,6 +54,8 @@ int main(const int arg_num, const char *arg_vec[]) {
      "input file containing patterns stored in the neural network")
     ("nodes", po::value<uint>(&nodes), "number of nodes which make up the network")
     ("patterns", po::value<uint>(&pattern_number), "number of random patterns to use")
+    ("probability_factor", po::value<uint>(&probability_factor)->default_value(16),
+     "fudge factor in computation of move acceptance probability from transition matrix")
     ;
 
   po::options_description all("Allowed options");
@@ -89,7 +92,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   mt19937_64 generator(seed); // use and seed the 64-bit Mersenne Twister 19937 generator
 
   // -------------------------------------------------------------------------------------
-  // Construct neural network and transition matrix
+  // Construct patterns for network and initialize network simulation
   // -------------------------------------------------------------------------------------
 
   vector<vector<bool>> patterns;
@@ -126,18 +129,17 @@ int main(const int arg_num, const char *arg_vec[]) {
   pattern_number = patterns.size();
   nodes = patterns.at(0).size();
 
-  hopfield_network network(patterns, random_state(nodes, rnd, generator));
-
-  transition_matrix transitions(network.couplings);
+  network_simulation ns(patterns, random_state(nodes, rnd, generator),
+                        probability_factor);
 
   cout << endl;
-  cout << "energy range: " << transitions.energy_range()
-       << " (of " << 2 * pattern_number * nodes * (nodes - 1) + 1 << ")" << endl;
-  cout << "max energy change: " << transitions.max_energy_change()
+  cout << "maximum energy: " << ns.network.max_energy
+       << " (of " << pattern_number * nodes * (nodes - 1) << ")" << endl;
+  cout << "maximum energy change: " << ns.network.max_energy_change
        << " (of " << pattern_number * (nodes - 1) << ")" << endl;
   cout << endl;
 
-  network.print_patterns();
-  network.print_couplings();
-  network.print_state();
+  ns.network.print_patterns();
+  ns.network.print_couplings();
+  ns.print_state();
 }
