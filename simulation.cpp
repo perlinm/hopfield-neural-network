@@ -31,15 +31,15 @@ int main(const int arg_num, const char *arg_vec[]) {
   // -------------------------------------------------------------------------------------
 
   unsigned long long int seed;
-  bool testing_mode;
+  bool debug;
 
   po::options_description general("General options", help_text_length);
   general.add_options()
     ("help,h", "produce help message")
     ("seed", po::value<unsigned long long int>(&seed)->default_value(0),
      "seed for random number generator")
-    ("test" ,po::value<bool>(&testing_mode)->default_value(false)->implicit_value(true),
-     "enable testing mode")
+    ("debug", po::value<bool>(&debug)->default_value(false)->implicit_value(true),
+     "enable debug mode")
     ;
 
   uint nodes = 0;
@@ -86,14 +86,19 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Process and run sanity checks on inputs
   // -------------------------------------------------------------------------------------
 
-  // by default, use the same number of patterns as there are nodes
-  if (nodes && !pattern_number) pattern_number = nodes;
+  // only run sanity checks if we're not in debug mode
+  if (!debug) {
+    // by default, use the same number of patterns as there are nodes
+    if (nodes && !pattern_number) pattern_number = nodes;
 
-  // if we specified a pattern file, make sure it exists
-  assert(pattern_file.empty() || fs::exists(pattern_file));
+    // if we specified a pattern file, make sure it exists
+    assert(pattern_file.empty() || fs::exists(pattern_file));
 
-  // if we did not specify anything, use a default pattern file
-  if (!nodes && pattern_file.empty()) pattern_file = default_pattern_file;
+    // if we did not specify anything, use a default pattern file
+    if (!nodes && pattern_file.empty()) pattern_file = default_pattern_file;
+  }
+
+  // determine whether we are using a pattern file afterall
   const bool using_pattern_file = !pattern_file.empty();
 
   // initialize random number generator
