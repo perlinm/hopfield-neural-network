@@ -148,9 +148,9 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   cout << endl;
   cout << "maximum energy: " << ns.network.max_energy
-       << " (of " << pattern_number * nodes * (nodes - 1) << ")" << endl;
+       << " (of " << pattern_number * nodes * (nodes - 1) << " possible)" << endl;
   cout << "maximum energy change: " << ns.network.max_energy_change
-       << " (of " << pattern_number * (nodes - 1) << ")" << endl;
+       << " (of " << pattern_number * (nodes - 1) << " possible)" << endl;
   cout << endl;
 
   ns.network.print_patterns();
