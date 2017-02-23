@@ -1,24 +1,40 @@
 #pragma once
 #define EIGEN_USE_MKL_ALL
 
-#include <vector>
+#include <random> // for randomness
+
 #include <eigen3/Eigen/Dense> // linear algebra library
 
+using namespace std;
 using namespace Eigen;
 
+// generate random state
+vector<bool> random_state(const uint nodes, uniform_real_distribution<double>& rnd,
+                          mt19937_64& generator);
+
 // generate coupling matrix from patterns
-MatrixXd get_couplings(std::vector<std::vector<bool>> patterns);
+MatrixXd get_couplings(vector<vector<bool>> patterns);
 
 // hopfield network object
 struct hopfield_network{
 
-  const std::vector<std::vector<bool>> patterns;
+  const vector<vector<bool>> patterns;
   const MatrixXd coupling;
   const uint nodes;
 
-  std::vector<bool> state;
+  hopfield_network(const vector<vector<bool>>& patterns,
+                   const vector<bool>& initial_state);
 
-  hopfield_network(const std::vector<std::vector<bool>>& patterns);
+  vector<bool> state;
 
+  double energy(){
+    double sum;
+    for (uint ii = 0; ii < nodes; ii++) {
+      for (uint jj = 0; jj < nodes; jj++) {
+        sum += coupling(ii,jj) * (2*state.at(ii)-1) * (2*state.at(jj)-1);
+      }
+    }
+    return -0.5*sum;
+  }
 
 };

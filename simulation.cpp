@@ -45,14 +45,14 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   string pattern_file;
   uint nodes = 0;
-  uint random = 0;
+  uint pattern_number = 0;
 
   po::options_description simulation_options("Simulation options",help_text_length);
   simulation_options.add_options()
-    ("patterns", po::value<string>(&pattern_file),
+    ("pattern_file", po::value<string>(&pattern_file),
      "input file containing patterns stored in the neural network")
     ("nodes", po::value<uint>(&nodes), "number of nodes which make up the network")
-    ("random", po::value<uint>(&random), "number of random patterns to use")
+    ("patterns", po::value<uint>(&pattern_number), "number of random patterns to use")
     ;
 
   po::options_description all("Allowed options");
@@ -75,7 +75,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   // -------------------------------------------------------------------------------------
 
   // by default, use the same number of patterns as there are nodes
-  if (nodes && !random) random = nodes;
+  if (nodes && !pattern_number) pattern_number = nodes;
 
   // if we specified a pattern file, make sure it exists
   assert(pattern_file.empty() || fs::exists(pattern_file));
@@ -117,17 +117,13 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   } else { // random patterns
 
-    for (uint ii = 0; ii < random; ii++) {
-      vector<bool> pattern = {};
-      for (uint jj = 0; jj < nodes; jj++) {
-        pattern.push_back(rnd(generator) < 0.5);
-      }
-      patterns.push_back(pattern);
+    for (uint ii = 0; ii < pattern_number; ii++) {
+      patterns.push_back(random_state(nodes, rnd, generator));
     }
 
   }
 
-  hopfield_network network(patterns);
+  hopfield_network network(patterns, random_state(nodes, rnd, generator));
 
   for (uint ii = 0; ii < network.patterns.size(); ii++) {
     for (uint jj = 0; jj < network.patterns.at(ii).size(); jj++) {
@@ -139,9 +135,14 @@ int main(const int arg_num, const char *arg_vec[]) {
   cout << endl;
   for (uint ii = 0; ii < network.coupling.rows(); ii++) {
     for (uint jj = 0; jj < network.coupling.cols(); jj++) {
-      cout << network.coupling(ii,jj) << "  ";
+      cout << nodes*network.coupling(ii,jj) << " ";
     }
     cout << endl << endl;
   }
+
+  for (uint ii = 0; ii < nodes; ii++) {
+    cout << network.state.at(ii) << " ";
+  }
+  cout << endl;
 
 }
