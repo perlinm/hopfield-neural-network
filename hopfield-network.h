@@ -14,6 +14,9 @@ using namespace Eigen;
 vector<bool> random_state(const uint nodes, uniform_real_distribution<double>& rnd,
                           mt19937_64& generator);
 
+// make a random change to a given state using a random number on [0,1)
+vector<bool> random_change(const vector<bool>& state, const double random);
+
 // generate interaction matrix from patterns
 // note: these couplings are a factor of [nodes] greater than the regular definition
 MatrixXi get_couplings(vector<vector<bool>>& patterns);
@@ -32,6 +35,10 @@ struct hopfield_network {
 
   hopfield_network(const vector<vector<bool>>& patterns);
 
+  // energy of the network in a given state
+  // note: this energy is a factor of [2*nodes] greater than the regular definition
+  int energy(const vector<bool>& state) const;
+
   void print_patterns() const;
   void print_couplings() const;
 
@@ -47,6 +54,7 @@ struct network_simulation {
   vector<bool> state;
 
   MatrixXi transition_matrix;
+
   vector<uint> energy_histogram;
   vector<vector<uint>> state_histogram;
 
@@ -54,11 +62,6 @@ struct network_simulation {
                      const vector<bool>& initial_state,
                      const double min_temperature,
                      const uint probability_factor);
-
-  // energy of the network in a given state
-  // note: this energy is a factor of [2*nodes] greater than the regular definition
-  int energy(const vector<bool>& state);
-  int energy() { return energy(state); };
 
   // initialize all histograms with zeros
   void initialize_histograms();
@@ -70,15 +73,10 @@ struct network_simulation {
   void move(const vector<bool>& new_state);
 
   // number of transitions from a given energy with a specified energy change
-  uint transitions(const int energy, const int energy_change) const {
-    return transition_matrix(energy + network.max_energy,
-                             energy_change + network.max_energy_change);
-  }
+  uint transitions(const int energy, const int energy_change) const;
 
   // observations of a given energy
-  uint energy_observations(const int energy) const {
-    return energy_histogram.at(energy + network.max_energy);
-  }
+  uint energy_observations(const int energy) const;
 
   // print a given network state
   void print_state(const vector<bool>& state) const;

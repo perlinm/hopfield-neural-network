@@ -1,8 +1,9 @@
 #define EIGEN_USE_MKL_ALL
 
 #include <iostream> // for standard output
-#include <fstream> // for file input
+#include <iomanip> // for io manipulation (e.g. setw)
 #include <random> // for randomness
+#include <fstream> // for file input
 
 #include <boost/filesystem.hpp> // filesystem path manipulation library
 #include <boost/program_options.hpp> // options parsing library
@@ -86,17 +87,14 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Process and run sanity checks on inputs
   // -------------------------------------------------------------------------------------
 
-  // only run sanity checks if we're not in debug mode
-  if (!debug) {
-    // by default, use the same number of patterns as there are nodes
-    if (nodes && !pattern_number) pattern_number = nodes;
+  // by default, use the same number of patterns as there are nodes
+  if (nodes && !pattern_number) pattern_number = nodes;
 
-    // if we specified a pattern file, make sure it exists
-    assert(pattern_file.empty() || fs::exists(pattern_file));
+  // if we specified a pattern file, make sure it exists
+  assert(pattern_file.empty() || fs::exists(pattern_file));
 
-    // if we did not specify anything, use a default pattern file
-    if (!nodes && pattern_file.empty()) pattern_file = default_pattern_file;
-  }
+  // if we did not specify anything, use a default pattern file
+  if (!nodes && pattern_file.empty()) pattern_file = default_pattern_file;
 
   // determine whether we are using a pattern file afterall
   const bool using_pattern_file = !pattern_file.empty();
@@ -153,7 +151,17 @@ int main(const int arg_num, const char *arg_vec[]) {
        << " (of " << pattern_number * (nodes - 1) << " possible)" << endl;
   cout << endl;
 
-  ns.network.print_patterns();
-  ns.network.print_couplings();
-  ns.print_state();
+  if (debug) {
+    ns.network.print_patterns();
+    cout << endl;
+    ns.network.print_couplings();
+    cout << endl;
+  }
+
+  for (uint ii = 0; ii < ns.network.nodes; ii++) {
+    ns.state = random_change(ns.state,rnd(generator));
+    cout << setw(log10(ns.network.max_energy)+2);
+    cout << ns.network.energy(ns.state) << ": ";
+    ns.print_state();
+  }
 }

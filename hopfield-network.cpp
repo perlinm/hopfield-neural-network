@@ -1,6 +1,7 @@
 #define EIGEN_USE_MKL_ALL
 
 #include <iostream> // for standard output
+#include <iomanip> // for io manipulation (e.g. setw)
 #include <random> // for randomness
 
 #include <eigen3/Eigen/Dense> // linear algebra library
@@ -18,6 +19,14 @@ vector<bool> random_state(const uint nodes, uniform_real_distribution<double>& r
     state.at(ii) = (rnd(generator) < 0.5);
   }
   return state;
+}
+
+// make a random change to a given state using a random number on [0,1)
+vector<bool> random_change(const vector<bool>& state, const double random) {
+  const uint node = floor(random*state.size());
+  vector<bool> new_state = state;
+  new_state.at(node) = !new_state.at(node);
+  return new_state;
 }
 
 // generate coupling matrix from patterns
@@ -56,6 +65,18 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) :
   max_energy_change(get_max_energy_change(couplings))
 {};
 
+// energy of the network in a given state
+// note: this energy is a factor of [2*nodes] greater than the regular definition
+int hopfield_network::energy(const vector<bool>& state) const {
+  int sum = 0;
+  for (uint ii = 0; ii < nodes; ii++) {
+    for (uint jj = 0; jj < nodes; jj++) {
+      sum += couplings(ii,jj) * (2*state.at(ii)-1) * (2*state.at(jj)-1);
+    }
+  }
+  return -sum;
+}
+
 void hopfield_network::print_patterns() const {
   for (uint ii = 0; ii < patterns.size(); ii++) {
     for (uint jj = 0; jj < nodes; jj++) {
@@ -63,8 +84,8 @@ void hopfield_network::print_patterns() const {
     }
     cout << endl;
   }
-  cout << endl;
 }
+
 void hopfield_network::print_couplings() const {
   const uint width = log10(couplings.array().abs().maxCoeff()) + 2;
   for (uint ii = 0; ii < nodes; ii++) {
@@ -73,7 +94,6 @@ void hopfield_network::print_couplings() const {
     }
     cout << endl;
   }
-  cout << endl;
 }
 
 // network simulation constructor
@@ -91,18 +111,6 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
   initialize_histograms();
 };
 
-// energy of network in its current state
-// note: this energy is a factor of [2*nodes] greater than the regular definition
-int network_simulation::energy(const vector<bool>& state) {
-  int sum = 0;
-  for (uint ii = 0; ii < network.nodes; ii++) {
-    for (uint jj = 0; jj < network.nodes; jj++) {
-      sum += network.couplings(ii,jj) * (2*state.at(ii)-1) * (2*state.at(jj)-1);
-    }
-  }
-  return -sum;
-}
-
 // initialize all histograms with zeros
 void network_simulation::initialize_histograms() {
   const uint energy_range = 2*network.max_energy + 1;
@@ -115,7 +123,7 @@ void network_simulation::initialize_histograms() {
 
 // update histograms with current state
 void network_simulation::update_histograms() {
-  const uint energy_index = energy() + network.max_energy;
+  const uint energy_index = network.energy(state) + network.max_energy;
   energy_histogram.at(energy_index)++;
   for (uint ii = 0; ii < network.nodes; ii++) {
     state_histogram.at(ii).at(energy_index) += state.at(ii);
@@ -128,10 +136,21 @@ void network_simulation::move(const vector<bool>& new_state) {
   update_histograms();
 }
 
+// number of transitions from a given energy with a specified energy change
+uint network_simulation::transitions(const int energy, const int energy_change) const {
+  return transition_matrix(energy + network.max_energy,
+                           energy_change + network.max_energy_change);
+}
+
+// observations of a given energy
+uint network_simulation::energy_observations(const int energy) const {
+  return energy_histogram.at(energy + network.max_energy);
+}
+
 // print a given network state
 void network_simulation::print_state(const vector<bool>& state) const {
   for (uint ii = 0; ii < state.size(); ii++) {
     cout << state.at(ii) << " ";
   }
-  cout << endl << endl;
+  cout << endl;
 }
