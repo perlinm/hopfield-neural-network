@@ -59,6 +59,7 @@ struct hopfield_network {
 struct network_simulation {
 
   const hopfield_network network;
+  const double min_temperature;
   const uint probability_factor;
 
   vector<bool> state;
@@ -67,6 +68,7 @@ struct network_simulation {
 
   network_simulation(const vector<vector<bool>>& patterns,
                      const vector<bool>& initial_state,
+                     const double min_temperature,
                      const uint probability_factor);
 
   // energy of network in its current state

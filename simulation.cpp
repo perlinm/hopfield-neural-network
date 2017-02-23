@@ -56,11 +56,11 @@ int main(const int arg_num, const char *arg_vec[]) {
 
 
   uint probability_factor;
-  double min_temp;
+  double min_temperature;
 
   po::options_description simulation_options("Simulation options",help_text_length);
   simulation_options.add_options()
-    ("min_temp", po::value<double>(&min_temp)->default_value(0.01),
+    ("min_temp", po::value<double>(&min_temperature)->default_value(0.01),
      "minimum temperature of interest")
     ("probability_factor", po::value<uint>(&probability_factor)->default_value(16),
      "fudge factor in computation of move acceptance probability from transition matrix")
@@ -144,7 +144,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   nodes = patterns.at(0).size();
 
   network_simulation ns(patterns, random_state(nodes, rnd, generator),
-                        probability_factor);
+                        min_temperature, probability_factor);
 
   cout << endl;
   cout << "maximum energy: " << ns.network.max_energy

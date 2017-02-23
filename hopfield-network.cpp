@@ -60,8 +60,11 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) :
 // network simulation constructor
 network_simulation::network_simulation(const vector<vector<bool>>& patterns,
                                        const vector<bool>& initial_state,
+                                       const double min_temperature,
                                        const uint probability_factor) :
-  network(hopfield_network(patterns)), probability_factor(probability_factor)
+  network(hopfield_network(patterns)),
+  min_temperature(min_temperature),
+  probability_factor(probability_factor)
 {
   state = initial_state;
   energy_histogram = vector<uint>(2*network.max_energy + 1);
