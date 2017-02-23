@@ -44,15 +44,15 @@ int main(const int arg_num, const char *arg_vec[]) {
     ;
 
   string pattern_file;
-  int nodes = 0;
-  int random = 0;
+  uint nodes = 0;
+  uint random = 0;
 
   po::options_description simulation_options("Simulation options",help_text_length);
   simulation_options.add_options()
     ("patterns", po::value<string>(&pattern_file),
      "input file containing patterns stored in the neural network")
-    ("nodes", po::value<int>(&nodes), "number of nodes which make up the network")
-    ("random", po::value<int>(&random), "number of random patterns to use")
+    ("nodes", po::value<uint>(&nodes), "number of nodes which make up the network")
+    ("random", po::value<uint>(&random), "number of random patterns to use")
     ;
 
   po::options_description all("Allowed options");
@@ -73,12 +73,6 @@ int main(const int arg_num, const char *arg_vec[]) {
   // -------------------------------------------------------------------------------------
   // Process and run sanity checks on inputs
   // -------------------------------------------------------------------------------------
-
-  // we should not have a negative number of nodes
-  assert(nodes >= 0);
-
-  // ... or random patterns
-  assert(!(nodes && random < 0));
 
   // by default, use the same number of patterns as there are nodes
   if (nodes && !random) random = nodes;
@@ -113,6 +107,24 @@ int main(const int arg_num, const char *arg_vec[]) {
       patterns.push_back(pattern);
     }
 
+    for (uint ii = 1; ii < patterns.size(); ii++) {
+      if (patterns.at(ii-1).size() != patterns.at(ii).size()){
+        cout << "patterns " << ii-1 << " and " << ii
+             << " do not have the same size!" << endl;
+        return -1;
+      }
+    }
+
+  } else { // random patterns
+
+    for (uint ii = 0; ii < random; ii++) {
+      vector<bool> pattern = {};
+      for (uint jj = 0; jj < nodes; jj++) {
+        pattern.push_back(rnd(generator) < 0.5);
+      }
+      patterns.push_back(pattern);
+    }
+
   }
 
   hopfield_network network(patterns);
@@ -122,6 +134,14 @@ int main(const int arg_num, const char *arg_vec[]) {
       cout << network.patterns.at(ii).at(jj) << " ";
     }
     cout << endl;
+  }
+
+  cout << endl;
+  for (uint ii = 0; ii < network.coupling.rows(); ii++) {
+    for (uint jj = 0; jj < network.coupling.cols(); jj++) {
+      cout << network.coupling(ii,jj) << "  ";
+    }
+    cout << endl << endl;
   }
 
 }
