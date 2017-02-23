@@ -128,15 +128,31 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   hopfield_network network(patterns, random_state(nodes, rnd, generator));
 
-  const int energy_range = 2 * network.coupling.array().abs().sum();
-  const int max_energy_range = 2 * pattern_number * nodes * (nodes - 1);
+  const int max_energy = network.coupling.array().abs().sum();
+  const int energy_range = 2 * max_energy + 1;
+  const int max_energy_increase = [&]() -> int {
+    int max_increase = 0;
+    for (uint ii = 0; ii < network.coupling.rows(); ii++) {
+      max_increase = max(network.coupling.row(ii).array().abs().sum(),max_increase);
+    }
+    return max_increase;
+  }();
+  const int max_energy_change = 2 * max_energy_increase + 1;
+
+  const int max_possible_energy = pattern_number * nodes * (nodes - 1);
+  const int max_possible_energy_range = 2 * max_possible_energy + 1;
+  const int max_possible_energy_change = pattern_number * (nodes - 1);
+
+  cout << endl;
+  cout << "energy range: " << energy_range
+       << " (of " << max_possible_energy_range << ")" << endl;
+  cout << "max energy change: " << max_energy_change
+       << " (of " << max_possible_energy_change << ")" << endl;
+  cout << endl;
 
   network.print_patterns();
   network.print_couplings();
   network.print_state();
 
   cout << "initial network energy: " << network.energy() << endl;
-  cout << "energy range: " << energy_range << endl;
-  cout << "max possible enery range: " << max_energy_range << endl;
-
 }

@@ -47,3 +47,15 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns,
 {
   state = initial_state;
 };
+
+// energy of network in its current state
+// note: this energy is a factor of [2*nodes] greater than the regular definition
+int hopfield_network::energy(vector<bool>& state) {
+  int sum = 0;
+  for (uint ii = 0; ii < nodes; ii++) {
+    for (uint jj = 0; jj < nodes; jj++) {
+      sum += coupling(ii,jj) * (2*state.at(ii)-1) * (2*state.at(jj)-1);
+    }
+  }
+  return -sum;
+}
