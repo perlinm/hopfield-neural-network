@@ -13,16 +13,16 @@ using namespace Eigen;
 // generate random state
 vector<bool> random_state(const uint nodes, uniform_real_distribution<double>& rnd,
                           mt19937_64& generator) {
-  vector<bool> state;
+  vector<bool> state(nodes);
   for (uint ii = 0; ii < nodes; ii++) {
-    state.push_back(rnd(generator) < 0.5);
+    state.at(ii) = (rnd(generator) < 0.5);
   }
   return state;
 }
 
 // generate coupling matrix from patterns
 // note: these couplings are a factor of [nodes] greater than the regular definition
-MatrixXi get_coupling_matrix(std::vector<std::vector<bool>> patterns) {
+MatrixXi get_coupling_matrix(const vector<vector<bool>>& patterns) {
   const uint nodes = patterns.at(0).size();
   MatrixXi coupling = MatrixXi::Zero(nodes,nodes);
 

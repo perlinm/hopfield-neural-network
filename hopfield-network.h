@@ -16,7 +16,7 @@ vector<bool> random_state(const uint nodes, uniform_real_distribution<double>& r
 
 // generate interaction matrix from patterns
 // note: these couplings are a factor of [nodes] greater than the regular definition
-MatrixXi get_couplings(vector<vector<bool>> patterns);
+MatrixXi get_couplings(vector<vector<bool>>& patterns);
 
 // get maximum energy change possible in one spin flip with given interaction matrix
 uint get_max_energy_change(const MatrixXi& couplings);
