@@ -42,7 +42,7 @@ MatrixXi get_coupling_matrix(std::vector<std::vector<bool>> patterns) {
 hopfield_network::hopfield_network(const vector<vector<bool>>& patterns,
                                    const vector<bool>& initial_state) :
   patterns(patterns),
-  coupling(get_coupling_matrix(patterns)),
+  couplings(get_coupling_matrix(patterns)),
   nodes(patterns.at(0).size())
 {
   state = initial_state;
@@ -54,8 +54,22 @@ int hopfield_network::energy(vector<bool>& state) {
   int sum = 0;
   for (uint ii = 0; ii < nodes; ii++) {
     for (uint jj = 0; jj < nodes; jj++) {
-      sum += coupling(ii,jj) * (2*state.at(ii)-1) * (2*state.at(jj)-1);
+      sum += couplings(ii,jj) * (2*state.at(ii)-1) * (2*state.at(jj)-1);
     }
   }
   return -sum;
+}
+
+transition_matrix::transition_matrix(const MatrixXi& couplings) {
+  const int max_energy = couplings.array().abs().sum();
+  const int max_energy_increase = [&]() -> int {
+    int max_increase = 0;
+    for (uint ii = 0; ii < couplings.rows(); ii++) {
+      max_increase = max(couplings.row(ii).array().abs().sum(),max_increase);
+    }
+    return max_increase;
+  }();
+
+  matrix = MatrixXi::Zero(2*max_energy + 1, 2*max_energy_increase + 1);
+
 }

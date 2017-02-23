@@ -14,15 +14,15 @@ using namespace Eigen;
 vector<bool> random_state(const uint nodes, uniform_real_distribution<double>& rnd,
                           mt19937_64& generator);
 
-// generate coupling matrix from patterns
+// generate interaction matrix from patterns
 // note: these couplings are a factor of [nodes] greater than the regular definition
 MatrixXi get_couplings(vector<vector<bool>> patterns);
 
 // hopfield network object
-struct hopfield_network{
+struct hopfield_network {
 
   const vector<vector<bool>> patterns;
-  const MatrixXi coupling;
+  const MatrixXi couplings;
   const uint nodes;
 
   hopfield_network(const vector<vector<bool>>& patterns,
@@ -41,10 +41,10 @@ struct hopfield_network{
   }
 
   void print_couplings() {
-    const uint width = log10(coupling.array().abs().maxCoeff()) + 2;
+    const uint width = log10(couplings.array().abs().maxCoeff()) + 2;
     for (uint ii = 0; ii < nodes; ii++) {
       for (uint jj = 0; jj < nodes; jj++) {
-        cout << setw(width) << coupling(ii,jj) << " ";
+        cout << setw(width) << couplings(ii,jj) << " ";
       }
       cout << endl;
     }
@@ -62,5 +62,21 @@ struct hopfield_network{
   // note: this energy is a factor of [2*nodes] greater than the regular definition
   int energy(vector<bool>& state);
   int energy() { return energy(state); }
+
+};
+
+// transition matrix object
+struct transition_matrix {
+
+  MatrixXi matrix;
+
+  transition_matrix(const MatrixXi& couplings);
+
+  uint energy_range() { return matrix.rows(); };
+  uint max_energy_change() { return matrix.cols()/2; };
+
+  uint operator()(const int energy, const int energy_change) {
+    return matrix(energy + matrix.rows()/2, energy_change + matrix.cols()/2);
+  }
 
 };

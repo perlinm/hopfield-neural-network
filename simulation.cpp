@@ -89,7 +89,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   mt19937_64 generator(seed); // use and seed the 64-bit Mersenne Twister 19937 generator
 
   // -------------------------------------------------------------------------------------
-  // Construct the neural network
+  // Construct neural network and transition matrix
   // -------------------------------------------------------------------------------------
 
   vector<vector<bool>> patterns;
@@ -128,31 +128,16 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   hopfield_network network(patterns, random_state(nodes, rnd, generator));
 
-  const int max_energy = network.coupling.array().abs().sum();
-  const int energy_range = 2 * max_energy + 1;
-  const int max_energy_increase = [&]() -> int {
-    int max_increase = 0;
-    for (uint ii = 0; ii < network.coupling.rows(); ii++) {
-      max_increase = max(network.coupling.row(ii).array().abs().sum(),max_increase);
-    }
-    return max_increase;
-  }();
-  const int max_energy_change = 2 * max_energy_increase + 1;
-
-  const int max_possible_energy = pattern_number * nodes * (nodes - 1);
-  const int max_possible_energy_range = 2 * max_possible_energy + 1;
-  const int max_possible_energy_change = pattern_number * (nodes - 1);
+  transition_matrix transitions(network.couplings);
 
   cout << endl;
-  cout << "energy range: " << energy_range
-       << " (of " << max_possible_energy_range << ")" << endl;
-  cout << "max energy change: " << max_energy_change
-       << " (of " << max_possible_energy_change << ")" << endl;
+  cout << "energy range: " << transitions.energy_range()
+       << " (of " << 2 * pattern_number * nodes * (nodes - 1) + 1 << ")" << endl;
+  cout << "max energy change: " << transitions.max_energy_change()
+       << " (of " << pattern_number * (nodes - 1) << ")" << endl;
   cout << endl;
 
   network.print_patterns();
   network.print_couplings();
   network.print_state();
-
-  cout << "initial network energy: " << network.energy() << endl;
 }
