@@ -2,7 +2,6 @@
 
 #include <iostream> // for standard output
 #include <fstream> // for file input
-#include <iomanip> // some nice printing functions
 #include <random> // for randomness
 
 #include <boost/filesystem.hpp> // filesystem path manipulation library
@@ -43,23 +42,33 @@ int main(const int arg_num, const char *arg_vec[]) {
      "enable testing mode")
     ;
 
-  string pattern_file;
   uint nodes = 0;
   uint pattern_number = 0;
+  string pattern_file;
+
+  po::options_description network_parameters("Network parameters",help_text_length);
+  network_parameters.add_options()
+    ("nodes", po::value<uint>(&nodes), "number of nodes which make up the network")
+    ("patterns", po::value<uint>(&pattern_number), "number of random patterns to use")
+    ("pattern_file", po::value<string>(&pattern_file),
+     "input file containing patterns stored in the neural network")
+    ;
+
+
   uint probability_factor;
+  double min_temp;
 
   po::options_description simulation_options("Simulation options",help_text_length);
   simulation_options.add_options()
-    ("pattern_file", po::value<string>(&pattern_file),
-     "input file containing patterns stored in the neural network")
-    ("nodes", po::value<uint>(&nodes), "number of nodes which make up the network")
-    ("patterns", po::value<uint>(&pattern_number), "number of random patterns to use")
+    ("min_temp", po::value<double>(&min_temp)->default_value(0.01),
+     "minimum temperature of interest")
     ("probability_factor", po::value<uint>(&probability_factor)->default_value(16),
      "fudge factor in computation of move acceptance probability from transition matrix")
     ;
 
   po::options_description all("Allowed options");
   all.add(general);
+  all.add(network_parameters);
   all.add(simulation_options);
 
   // collect inputs
