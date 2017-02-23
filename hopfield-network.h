@@ -32,26 +32,8 @@ struct hopfield_network {
 
   hopfield_network(const vector<vector<bool>>& patterns);
 
-  void print_patterns() const {
-    for (uint ii = 0; ii < patterns.size(); ii++) {
-      for (uint jj = 0; jj < nodes; jj++) {
-        cout << patterns.at(ii).at(jj) << " ";
-      }
-      cout << endl;
-    }
-    cout << endl;
-  }
-
-   void print_couplings() const {
-    const uint width = log10(couplings.array().abs().maxCoeff()) + 2;
-    for (uint ii = 0; ii < nodes; ii++) {
-      for (uint jj = 0; jj < nodes; jj++) {
-        cout << setw(width) << couplings(ii,jj) << " ";
-      }
-      cout << endl;
-    }
-    cout << endl;
-  }
+  void print_patterns() const;
+  void print_couplings() const;
 
 };
 
@@ -63,36 +45,43 @@ struct network_simulation {
   const uint probability_factor;
 
   vector<bool> state;
-  vector<uint> energy_histogram;
+
   MatrixXi transition_matrix;
+  vector<uint> energy_histogram;
+  vector<vector<uint>> state_histogram;
 
   network_simulation(const vector<vector<bool>>& patterns,
                      const vector<bool>& initial_state,
                      const double min_temperature,
                      const uint probability_factor);
 
-  // energy of network in its current state
+  // energy of the network in a given state
   // note: this energy is a factor of [2*nodes] greater than the regular definition
-  int energy(vector<bool>& state);
+  int energy(const vector<bool>& state);
   int energy() { return energy(state); };
+
+  // initialize all histograms with zeros
+  void initialize_histograms();
+
+  // update histograms with current state
+  void update_histograms();
+
+  // move to a new state and update histograms
+  void move(const vector<bool>& new_state);
+
+  // number of transitions from a given energy with a specified energy change
+  uint transitions(const int energy, const int energy_change) const {
+    return transition_matrix(energy + network.max_energy,
+                             energy_change + network.max_energy_change);
+  }
 
   // observations of a given energy
   uint energy_observations(const int energy) const {
     return energy_histogram.at(energy + network.max_energy);
   }
 
-  // transitions from given energy with specified energy change
-  uint transitions(const int energy, const int energy_change) const {
-    return transition_matrix(energy + network.max_energy,
-                             energy_change + network.max_energy_change);
-  }
-
-  // print current state of network
-  void print_state() const {
-    for (uint ii = 0; ii < state.size(); ii++) {
-      cout << state.at(ii) << " ";
-    }
-    cout << endl << endl;
-  }
+  // print a given network state
+  void print_state(const vector<bool>& state) const;
+  void print_state() const { return print_state(state); };
 
 };

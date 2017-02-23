@@ -56,6 +56,25 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) :
   max_energy_change(get_max_energy_change(couplings))
 {};
 
+void hopfield_network::print_patterns() const {
+  for (uint ii = 0; ii < patterns.size(); ii++) {
+    for (uint jj = 0; jj < nodes; jj++) {
+      cout << patterns.at(ii).at(jj) << " ";
+    }
+    cout << endl;
+  }
+  cout << endl;
+}
+void hopfield_network::print_couplings() const {
+  const uint width = log10(couplings.array().abs().maxCoeff()) + 2;
+  for (uint ii = 0; ii < nodes; ii++) {
+    for (uint jj = 0; jj < nodes; jj++) {
+      cout << setw(width) << couplings(ii,jj) << " ";
+    }
+    cout << endl;
+  }
+  cout << endl;
+}
 
 // network simulation constructor
 network_simulation::network_simulation(const vector<vector<bool>>& patterns,
@@ -67,14 +86,14 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
   probability_factor(probability_factor)
 {
   state = initial_state;
-  energy_histogram = vector<uint>(2*network.max_energy + 1);
   transition_matrix = MatrixXi::Zero(2*network.max_energy + 1,
                                      2*network.max_energy_change + 1);
+  initialize_histograms();
 };
 
 // energy of network in its current state
 // note: this energy is a factor of [2*nodes] greater than the regular definition
-int network_simulation::energy(vector<bool>& state) {
+int network_simulation::energy(const vector<bool>& state) {
   int sum = 0;
   for (uint ii = 0; ii < network.nodes; ii++) {
     for (uint jj = 0; jj < network.nodes; jj++) {
@@ -82,4 +101,37 @@ int network_simulation::energy(vector<bool>& state) {
     }
   }
   return -sum;
+}
+
+// initialize all histograms with zeros
+void network_simulation::initialize_histograms() {
+  const uint energy_range = 2*network.max_energy + 1;
+  energy_histogram = vector<uint>(energy_range);
+  state_histogram = vector<vector<uint>>(network.nodes);
+  for (uint ii = 0; ii < network.nodes; ii++) {
+    state_histogram.at(ii) = vector<uint>(energy_range);
+  }
+}
+
+// update histograms with current state
+void network_simulation::update_histograms() {
+  const uint energy_index = energy() + network.max_energy;
+  energy_histogram.at(energy_index)++;
+  for (uint ii = 0; ii < network.nodes; ii++) {
+    state_histogram.at(ii).at(energy_index) += state.at(ii);
+  }
+}
+
+// move to a new state and update histograms
+void network_simulation::move(const vector<bool>& new_state) {
+  state = new_state;
+  update_histograms();
+}
+
+// print a given network state
+void network_simulation::print_state(const vector<bool>& state) const {
+  for (uint ii = 0; ii < state.size(); ii++) {
+    cout << state.at(ii) << " ";
+  }
+  cout << endl << endl;
 }
