@@ -24,7 +24,7 @@ vector<bool> random_state(const uint nodes, uniform_real_distribution<double>& r
 // note: these couplings are a factor of [nodes] greater than the regular definition
 MatrixXi get_coupling_matrix(std::vector<std::vector<bool>> patterns) {
   const uint nodes = patterns.at(0).size();
-  MatrixXi coupling(nodes,nodes);
+  MatrixXi coupling = MatrixXi::Zero(nodes,nodes);
 
   for (uint ii = 0; ii < nodes; ii++) {
     for (uint jj = 0; jj < nodes; jj++) {
