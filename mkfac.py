@@ -12,7 +12,7 @@ for arg in sys.argv[1:]:
         print('useage: {} [test] [whide]'.format(sys.argv[0]))
         exit(1)
 
-executable = "hopfield.exe"
+executable = "simulate.exe"
 ignore_dirs = [ "~/.ccache/" ]
 
 language_standard_flag = "-std=c++11"
