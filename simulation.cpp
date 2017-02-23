@@ -94,6 +94,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   vector<vector<bool>> patterns;
 
+  // if we are using a pattern file, read it in
   if (using_pattern_file) {
     ifstream input(pattern_file);
     string line;
@@ -115,7 +116,7 @@ int main(const int arg_num, const char *arg_vec[]) {
       }
     }
 
-  } else { // random patterns
+  } else { // if we are not using a pattern file, generate random patterns
 
     for (uint ii = 0; ii < pattern_number; ii++) {
       patterns.push_back(random_state(nodes, rnd, generator));
@@ -135,7 +136,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   cout << endl;
   for (uint ii = 0; ii < network.coupling.rows(); ii++) {
     for (uint jj = 0; jj < network.coupling.cols(); jj++) {
-      cout << nodes*network.coupling(ii,jj) << " ";
+      cout << network.coupling(ii,jj) << " ";
     }
     cout << endl << endl;
   }
@@ -144,5 +145,6 @@ int main(const int arg_num, const char *arg_vec[]) {
     cout << network.state.at(ii) << " ";
   }
   cout << endl;
+  cout << network.energy() << endl;
 
 }
