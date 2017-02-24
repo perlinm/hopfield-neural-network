@@ -56,15 +56,16 @@ int main(const int arg_num, const char *arg_vec[]) {
     ;
 
 
-  uint probability_factor;
   double min_temperature;
+  uint tpf; // "transition probability factor"
 
   po::options_description simulation_options("Simulation options",help_text_length);
   simulation_options.add_options()
-    ("min_temp", po::value<double>(&min_temperature)->default_value(0.01),
+    ("min_temp", po::value<double>(&min_temperature)->default_value(0.1,"0.1"),
      "minimum temperature of interest")
-    ("probability_factor", po::value<uint>(&probability_factor)->default_value(16),
-     "fudge factor in computation of move acceptance probability from transition matrix")
+    ("probability_factor", po::value<uint>(&tpf)->default_value(1),
+     "fudge factor in computation of move acceptance probability"
+     " during transition matrix initialization")
     ;
 
   po::options_description all("Allowed options");
@@ -141,8 +142,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   pattern_number = patterns.size();
   nodes = patterns.at(0).size();
 
-  network_simulation ns(patterns, random_state(nodes, rnd, generator),
-                        min_temperature, probability_factor);
+  network_simulation ns(patterns, random_state(nodes, rnd, generator));
 
   cout << endl
        << "maximum energy: " << ns.network.max_energy
@@ -151,6 +151,7 @@ int main(const int arg_num, const char *arg_vec[]) {
        << "maximum energy change: " << ns.network.max_energy_change
        << " (of " << 2 * pattern_number * (nodes - 1) / ns.network.energy_scale
        << " possible)" << endl
+       << "energy scale: " << ns.network.energy_scale << endl
        << endl;
 
   if (debug) {
@@ -160,8 +161,62 @@ int main(const int arg_num, const char *arg_vec[]) {
     cout << endl;
   }
 
+  // -------------------------------------------------------------------------------------
+  // Initialize transition matrix
+  // -------------------------------------------------------------------------------------
 
-  cout << "max energy change: " << ns.network.max_energy_change << endl;
-  cout << "energy scale: " << ns.network.energy_scale << endl;
+  for (uint ii = 0; ii < pow(10,6); ii++) {
+
+    const vector<bool> new_state = random_change(ns.state,rnd(generator));
+
+    const int old_energy = ns.energy();
+    const int new_energy = ns.energy(new_state);
+    const int energy_change = new_energy - old_energy;
+
+    ns.add_transition(old_energy, energy_change);
+
+    if (energy_change < 0) {
+      // if the energy change for the proposed move is negative, always accept it
+      ns.state = new_state;
+
+    } else {
+      // otherwise, accept the move with some probability
+      const double old_norm = ns.transitions_from(old_energy);
+      const double new_norm = ns.transitions_from(new_energy);
+
+      const double forward_flux
+        = double(ns.transitions(old_energy, energy_change) + tpf) / (old_norm + tpf);
+      const double backward_flux
+        = double(ns.transitions(new_energy, -energy_change) + tpf) / (new_norm + tpf);
+
+      const double transition_probability
+        = max(forward_flux/backward_flux, exp(-energy_change/min_temperature));
+
+      if (rnd(generator) < transition_probability) {
+        ns.state = new_state;
+      }
+    }
+
+    // update histograms and sample counts
+    ns.update_histograms();
+    ns.update_samples(new_energy, old_energy);
+  }
+
+  ns.compute_dos_and_weights();
+
+  for (int energy = int(ns.network.max_energy);
+       energy >= -int(ns.network.max_energy); energy--) {
+    const uint observations = ns.energy_observations(energy);
+    if (observations > 0) {
+      cout << setw(log10(ns.network.max_energy)+2)
+           << energy << " "
+           << ns.ln_dos.at(energy + ns.network.max_energy) << " "
+           << observations << " ";
+      if (energy < 0){
+        cout << ns.samples.at(-energy) << " ";
+      }
+      cout << endl;
+    }
+  }
 
 }
