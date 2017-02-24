@@ -89,11 +89,11 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
 int hopfield_network::energy(const vector<bool>& state) const {
   int sum = 0;
   for (uint ii = 0; ii < nodes; ii++) {
-    for (uint jj = 0; jj < nodes; jj++) {
+    for (uint jj = ii+1; jj < nodes; jj++) {
       sum += couplings(ii,jj) * (2*state.at(ii)-1) * (2*state.at(jj)-1);
     }
   }
-  return -sum/(2*int(energy_scale));
+  return -sum/int(energy_scale);
 }
 
 
