@@ -11,6 +11,12 @@
 using namespace std;
 using namespace Eigen;
 
+// greatest common divisor
+int gcd(const int a, const int b) {
+  if (b == 0) return a;
+  else return gcd(b, a % b);
+}
+
 // generate random state
 vector<bool> random_state(const uint nodes, uniform_real_distribution<double>& rnd,
                           mt19937_64& generator) {
@@ -47,26 +53,39 @@ MatrixXi get_coupling_matrix(const vector<vector<bool>>& patterns) {
   return coupling;
 }
 
-// get maximum energy change possible in one spin flip with given interaction matrix
-uint get_max_energy_change(const MatrixXi& couplings){
-  int max_change = 0;
-  for (uint ii = 0; ii < couplings.rows(); ii++) {
-    max_change = max(couplings.row(ii).array().abs().sum(), max_change);
-  }
-  return max_change;
-}
-
 // hopfield network constructor
-hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) :
-  nodes(patterns.at(0).size()),
-  patterns(patterns),
-  couplings(get_coupling_matrix(patterns)),
-  max_energy(couplings.array().abs().sum()),
-  max_energy_change(get_max_energy_change(couplings))
-{};
+hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
+  nodes = patterns.at(0).size();
+
+  // generate interaction matrix from patterns
+  // note: these couplings are a factor of [nodes] greater than the regular definition
+  couplings = MatrixXi::Zero(nodes,nodes);
+  for (uint ii = 0; ii < nodes; ii++) {
+    for (uint jj = 0; jj < nodes; jj++) {
+      for (uint pp = 0; pp < patterns.size(); pp++) {
+        couplings(ii,jj) += (2*patterns.at(pp).at(ii)-1)*(2*patterns.at(pp).at(jj)-1);
+      }
+    }
+    couplings(ii,ii) = 0;
+  }
+
+  max_energy = couplings.array().abs().sum();
+
+  max_energy_change = 0;
+  energy_scale = max_energy;
+  for (uint ii = 0; ii < nodes; ii++) {
+    const uint energy_change = couplings.row(ii).array().abs().sum();
+    max_energy_change = max(energy_change, max_energy_change);
+    energy_scale = gcd(energy_change, energy_scale);
+  }
+
+  max_energy /= energy_scale;
+  max_energy_change /= energy_scale;
+};
 
 // energy of the network in a given state
-// note: this energy is a factor of [2*nodes] greater than the regular definition
+// note: this energy is a factor of [nodes/energy_scale] greater
+//       than the regular definition
 int hopfield_network::energy(const vector<bool>& state) const {
   int sum = 0;
   for (uint ii = 0; ii < nodes; ii++) {
@@ -74,17 +93,9 @@ int hopfield_network::energy(const vector<bool>& state) const {
       sum += couplings(ii,jj) * (2*state.at(ii)-1) * (2*state.at(jj)-1);
     }
   }
-  return -sum;
+  return -sum/(2*int(energy_scale));
 }
 
-void hopfield_network::print_patterns() const {
-  for (uint ii = 0; ii < patterns.size(); ii++) {
-    for (uint jj = 0; jj < nodes; jj++) {
-      cout << patterns.at(ii).at(jj) << " ";
-    }
-    cout << endl;
-  }
-}
 
 void hopfield_network::print_couplings() const {
   const uint width = log10(couplings.array().abs().maxCoeff()) + 2;
@@ -101,6 +112,7 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
                                        const vector<bool>& initial_state,
                                        const double min_temperature,
                                        const uint probability_factor) :
+  patterns(patterns),
   network(hopfield_network(patterns)),
   min_temperature(min_temperature),
   probability_factor(probability_factor)
@@ -108,6 +120,7 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
   state = initial_state;
   transition_matrix = MatrixXi::Zero(2*network.max_energy + 1,
                                      2*network.max_energy_change + 1);
+  weights = vector<double>(2*network.max_energy + 1, 1);
   initialize_histograms();
 };
 
@@ -145,6 +158,16 @@ uint network_simulation::transitions(const int energy, const int energy_change) 
 // observations of a given energy
 uint network_simulation::energy_observations(const int energy) const {
   return energy_histogram.at(energy + network.max_energy);
+}
+
+// print simulation patterns
+void network_simulation::print_patterns() const {
+  for (uint ii = 0; ii < patterns.size(); ii++) {
+    for (uint jj = 0; jj < network.nodes; jj++) {
+      cout << patterns.at(ii).at(jj) << " ";
+    }
+    cout << endl;
+  }
 }
 
 // print a given network state

@@ -146,22 +146,22 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   cout << endl;
   cout << "maximum energy: " << ns.network.max_energy
-       << " (of " << pattern_number * nodes * (nodes - 1) << " possible)" << endl;
+       << " (of " << pattern_number * nodes * (nodes - 1) / ns.network.energy_scale
+       << " possible)" << endl;
   cout << "maximum energy change: " << ns.network.max_energy_change
-       << " (of " << pattern_number * (nodes - 1) << " possible)" << endl;
+       << " (of " << 2 * pattern_number * (nodes - 1) / ns.network.energy_scale
+       << " possible)" << endl;
   cout << endl;
 
   if (debug) {
-    ns.network.print_patterns();
+    ns.print_patterns();
     cout << endl;
     ns.network.print_couplings();
     cout << endl;
   }
 
-  for (uint ii = 0; ii < ns.network.nodes; ii++) {
-    ns.state = random_change(ns.state,rnd(generator));
-    cout << setw(log10(ns.network.max_energy)+2);
-    cout << ns.network.energy(ns.state) << ": ";
-    ns.print_state();
-  }
+
+  cout << "max energy change: " << ns.network.max_energy_change << endl;
+  cout << "energy scale: " << ns.network.energy_scale << endl;
+
 }
