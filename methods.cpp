@@ -6,7 +6,7 @@
 
 #include <eigen3/Eigen/Dense> // linear algebra library
 
-#include "hopfield-network.h"
+#include "methods.h"
 
 using namespace std;
 using namespace Eigen;

@@ -1,22 +1,22 @@
-| g++ -std=c++11 -Wall -Werror -flto -O3 $(cat .eigen-dirs) -Wl,--no-as-needed,-rpath=$(cat .mkl-root)/lib/intel64/ -L $(cat .mkl-root)/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_gnu_thread -lpthread -lm -ldl -fopenmp -m64 -I $(cat .mkl-root)/include/ -c -o hopfield-network.o hopfield-network.cpp
-< hopfield-network.h
-< hopfield-network.cpp
+| g++ -std=c++11 -Wall -Werror -flto -O3 $(cat .eigen-dirs) -Wl,--no-as-needed,-rpath=$(cat .mkl-root)/lib/intel64/ -L $(cat .mkl-root)/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_gnu_thread -lpthread -lm -ldl -fopenmp -m64 -I $(cat .mkl-root)/include/ -c -o methods.o methods.cpp
+< methods.h
+< methods.cpp
 < .mkl-root
 < .eigen-dirs
 C ~/.ccache/
-> hopfield-network.o
+> methods.o
 
 | g++ -std=c++11 -Wall -Werror -flto -O3 -lboost_system -lboost_filesystem -lboost_program_options $(cat .eigen-dirs) -Wl,--no-as-needed,-rpath=$(cat .mkl-root)/lib/intel64/ -L $(cat .mkl-root)/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_gnu_thread -lpthread -lm -ldl -fopenmp -m64 -I $(cat .mkl-root)/include/ -c -o simulation.o simulation.cpp
-< hopfield-network.h
+< methods.h
 < simulation.cpp
 < .mkl-root
 < .eigen-dirs
 C ~/.ccache/
 > simulation.o
 
-| g++ -std=c++11 -Wall -Werror -flto -O3 $(cat .eigen-dirs) -Wl,--no-as-needed,-rpath=$(cat .mkl-root)/lib/intel64/ -L $(cat .mkl-root)/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_gnu_thread -lpthread -lm -ldl -fopenmp -m64 -I $(cat .mkl-root)/include/ -lboost_system -lboost_filesystem -lboost_program_options -o simulate.exe hopfield-network.o simulation.o
-< hopfield-network.h
-< hopfield-network.o
+| g++ -std=c++11 -Wall -Werror -flto -O3 $(cat .eigen-dirs) -Wl,--no-as-needed,-rpath=$(cat .mkl-root)/lib/intel64/ -L $(cat .mkl-root)/lib/intel64/ -lmkl_intel_lp64 -lmkl_core -lmkl_gnu_thread -lpthread -lm -ldl -fopenmp -m64 -I $(cat .mkl-root)/include/ -lboost_system -lboost_filesystem -lboost_program_options -o simulate.exe methods.o simulation.o
+< methods.h
+< methods.o
 < simulation.o
 < .mkl-root
 < .eigen-dirs

@@ -10,7 +10,7 @@
 
 #include <eigen3/Eigen/Dense> // linear algebra library
 
-#include "hopfield-network.h"
+#include "methods.h"
 
 using namespace std;
 using namespace Eigen;
@@ -144,14 +144,14 @@ int main(const int arg_num, const char *arg_vec[]) {
   network_simulation ns(patterns, random_state(nodes, rnd, generator),
                         min_temperature, probability_factor);
 
-  cout << endl;
-  cout << "maximum energy: " << ns.network.max_energy
+  cout << endl
+       << "maximum energy: " << ns.network.max_energy
        << " (of " << pattern_number * nodes * (nodes - 1) / ns.network.energy_scale
-       << " possible)" << endl;
-  cout << "maximum energy change: " << ns.network.max_energy_change
+       << " possible)" << endl
+       << "maximum energy change: " << ns.network.max_energy_change
        << " (of " << 2 * pattern_number * (nodes - 1) / ns.network.energy_scale
-       << " possible)" << endl;
-  cout << endl;
+       << " possible)" << endl
+       << endl;
 
   if (debug) {
     ns.print_patterns();
