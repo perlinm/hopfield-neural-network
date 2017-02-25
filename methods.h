@@ -44,12 +44,12 @@ struct network_simulation {
   const hopfield_network network;
 
   vector<bool> state;
-  vector<int> energy_histogram;
-  vector<vector<int>> state_histogram;
+  vector<long int> energy_histogram;
+  vector<vector<long int>> state_histogram;
 
   // the transition matrix tells us how many times we have moved
   //   from a given energy E with a specified energy difference dE
-  vector<vector<int>> energy_transitions;
+  vector<vector<long int>> energy_transitions;
 
   // have we visited this (negative) energy at least once since
   //   the last observation of states with energy >= 0?
@@ -100,11 +100,15 @@ struct network_simulation {
   // update sample count
   void update_samples(const int new_energy, const int old_energy);
 
+  // expectation value of fractional sample error at a given temperature
+  // WARNING: assumes that the density of states is up to date
+  double fractional_sample_error(const double temp) const;
+
   // add to transition matrix
   void add_transition(const int energy, const int energy_change);
 
   // compute density of states and weight array from transition matrix
-  void compute_weights_from_transitions(const double min_temp);
+  void compute_dos_and_weights_from_transitions(const double min_temp);
 
   // probability to accept a move into a new state
   double acceptance_probability(const vector<bool>& new_state) const;

@@ -57,13 +57,13 @@ int main(const int arg_num, const char *arg_vec[]) {
   simulation_options.add_options()
     ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
      "log base 10 of the number of iterations to simulate")
-    ("all_temps", po::value<bool>(&all_temps)->default_value(true)->implicit_value(true),
-     "run an all-temperature simulation")
     ("inf_temp", po::value<bool>(&inf_temp)->default_value(false)->implicit_value(true),
      "run an infinite temperature simulation")
     ("fixed_temp",
      po::value<bool>(&fixed_temp)->default_value(false)->implicit_value(true),
      "run a fixed-temperature simulation")
+    ("all_temps", po::value<bool>(&all_temps)->default_value(true)->implicit_value(true),
+     "run an all-temperature simulation")
     ("temp_scale", po::value<double>(&temp_scale)->default_value(1),
      "temperature scale of interest in simulation")
     ("transition_factor", po::value<int>(&tpff)->default_value(1),
@@ -232,9 +232,21 @@ int main(const int arg_num, const char *arg_vec[]) {
       ns.update_samples(new_energy, old_energy);
     }
 
-    ns.compute_weights_from_transitions(temp_scale);
-    ns.reset_histograms();
+    ns.compute_dos_and_weights_from_transitions(temp_scale);
 
+    if (debug) {
+      for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
+        if (ns.energy_histogram.at(ee) != 0) {
+          cout << setw(4) << ee << " "
+               << setw(10) << ns.energy_histogram.at(ee) << " "
+               << setw(10) << ns.ln_dos.at(ee) << " "
+               << setw(10) << ns.samples.at(ee) << " "
+               << endl;
+        }
+      }
+    }
+
+    ns.reset_histograms();
     cout << "starting an all-temperature simulation" << endl;
   }
 

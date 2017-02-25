@@ -106,13 +106,13 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
   state = initial_state;
   reset_histograms();
 
-  energy_transitions = vector<vector<int>>(network.energy_range);
+  energy_transitions = vector<vector<long int>>(network.energy_range);
   for (int ee = 0; ee < network.energy_range; ee++) {
-    energy_transitions.at(ee) = vector<int>(2*network.max_energy_change + 1, 0);
+    energy_transitions.at(ee) = vector<long int>(2*network.max_energy_change + 1, 0);
   }
 
   reset_visit_log();
-  samples = vector<int>(network.max_energy, 0);
+  samples = vector<int>(network.energy_range, 0);
   ln_weights = vector<double>(network.energy_range, 1);
   ln_dos = vector<double>(network.energy_range, 0);
 };
@@ -154,14 +154,14 @@ double network_simulation::transition_matrix(const int final_energy,
 
 // reset all histograms and the visit log of visited energies
 void network_simulation::reset_histograms() {
-  energy_histogram = vector<int>(network.energy_range);
-  state_histogram = vector<vector<int>>(network.nodes);
+  energy_histogram = vector<long int>(network.energy_range);
+  state_histogram = vector<vector<long int>>(network.nodes);
   for (int ii = 0; ii < network.nodes; ii++) {
-    state_histogram.at(ii) = vector<int>(network.energy_range);
+    state_histogram.at(ii) = vector<long int>(network.energy_range);
   }
 }
 void network_simulation::reset_visit_log() {
-  visited = vector<bool>(network.max_energy, false);
+  visited = vector<bool>(network.energy_range, false);
 }
 
 // update histograms with an observation of the current state
@@ -176,16 +176,31 @@ void network_simulation::update_histograms() {
 // update sample count
 void network_simulation::update_samples(const int new_energy, const int old_energy) {
   // we only need to add to the sample count if the new energy is negative
-  if (new_energy < 0) {
+  if (new_energy < network.max_energy) {
     // if we have not visited the new energy yet, now we have; add to the sample count
-    if (!visited.at(-new_energy)) {
-      visited.at(-new_energy) = true;
-      samples.at(-new_energy)++;
+    if (!visited.at(new_energy)) {
+      visited.at(new_energy) = true;
+      samples.at(new_energy)++;
     }
-  } else if (old_energy < 0) {
+  } else if (old_energy < network.max_energy) {
     // if the new energy is >= 0 and the old energy was < 0, reset the visit log
     reset_visit_log();
   }
+}
+
+// expectation value of fractional sample error at a given temperature
+// WARNING: assumes that the density of states is up to date
+double network_simulation::fractional_sample_error(const double temp) const {
+  double error = 0;
+  double normalization = 0;
+  for (int ee = 0; ee < network.energy_range; ee++) {
+    if (samples.at(ee) != 0) {
+      const double boltzmann_factor = exp(ln_dos.at(ee) - ee/temp);
+      error += boltzmann_factor/sqrt(samples.at(ee));
+      normalization += boltzmann_factor;
+    }
+  }
+  return error/normalization;
 }
 
 // add to transition matrix
@@ -194,10 +209,10 @@ void network_simulation::add_transition(const int energy, const int energy_chang
 }
 
 // compute density of states and weight array from transition matrix
-void network_simulation::compute_weights_from_transitions(const double min_temp) {
+void network_simulation::compute_dos_and_weights_from_transitions(const double min_temp) {
 
+  ln_dos = vector<double>(network.energy_range, 0);
   ln_weights = vector<double>(network.energy_range, 1);
-  vector<double> ln_dos(network.energy_range, 0);
 
   double max_ln_dos = 0;
   int max_ln_dos_energy = 0;
@@ -206,7 +221,8 @@ void network_simulation::compute_weights_from_transitions(const double min_temp)
   for (int ee = 1; ee < network.energy_range; ee++) {
 
     ln_dos.at(ee) = ln_dos.at(ee - 1);
-    if (transitions_from(ee) == 0) continue;
+
+    if (energy_histogram.at(ee) == 0) continue;
 
     double flux_up_to_this_energy = 0;
     double flux_down_from_this_energy = 0;
