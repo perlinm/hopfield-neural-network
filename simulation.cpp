@@ -18,7 +18,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Set input options
   // -------------------------------------------------------------------------------------
 
-  const uint help_text_length = 85;
+  const int help_text_length = 85;
 
   unsigned long long int seed;
   bool debug;
@@ -32,15 +32,15 @@ int main(const int arg_num, const char *arg_vec[]) {
      "enable debug mode")
     ;
 
-  uint nodes;
-  uint pattern_number;
+  int nodes;
+  int pattern_number;
   string pattern_file;
 
   po::options_description network_parameters("Network parameters",help_text_length);
   network_parameters.add_options()
-    ("nodes", po::value<uint>(&nodes)->default_value(10),
+    ("nodes", po::value<int>(&nodes)->default_value(10),
      "number of nodes which make up the network")
-    ("patterns", po::value<uint>(&pattern_number)->default_value(10),
+    ("patterns", po::value<int>(&pattern_number)->default_value(10),
      "number of random patterns to use")
     ("pattern_file", po::value<string>(&pattern_file),
      "input file containing patterns stored in the neural network")
@@ -48,13 +48,13 @@ int main(const int arg_num, const char *arg_vec[]) {
 
 
   double min_temp;
-  uint tpf; // "transition probability factor"
+  int tpf; // "transition probability factor"
 
   po::options_description simulation_options("Simulation options",help_text_length);
   simulation_options.add_options()
     ("min_temp", po::value<double>(&min_temp)->default_value(0.01,"0.01"),
      "minimum temperature of interest")
-    ("probability_factor", po::value<uint>(&tpf)->default_value(1),
+    ("probability_factor", po::value<int>(&tpf)->default_value(1),
      "fudge factor in computation of move acceptance probability"
      " during transition matrix initialization")
     ;
@@ -79,6 +79,13 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Process and run sanity checks on inputs
   // -------------------------------------------------------------------------------------
 
+  // we should have a positive number of nodes and patterns
+  assert(nodes > 0);
+  assert(pattern_number > 0);
+
+  // we can specify either nodes, or a pattern file; not both
+  assert(!nodes || pattern_file.empty());
+
   // if we specified a pattern file, make sure it exists
   assert(pattern_file.empty() || fs::exists(pattern_file));
 
@@ -102,7 +109,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
     while (getline(input,line)) {
       vector<bool> pattern = {};
-      for (uint ii = 0; ii < line.length(); ii++) {
+      for (int ii = 0; ii < int(line.length()); ii++) {
         if (line.at(ii) == '1') pattern.push_back(true);
         if (line.at(ii) == '0') pattern.push_back(false);
       }
@@ -111,13 +118,13 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   } else { // if we are not using a pattern file, generate random patterns
 
-    for (uint ii = 0; ii < pattern_number; ii++) {
+    for (int ii = 0; ii < pattern_number; ii++) {
       patterns.push_back(random_state(nodes, rnd, generator));
     }
 
   }
 
-  for (uint ii = 1; ii < patterns.size(); ii++) {
+  for (int ii = 1; ii < int(patterns.size()); ii++) {
     if (patterns.at(ii-1).size() != patterns.at(ii).size()){
       cout << "patterns " << ii-1 << " and " << ii
            << " do not have the same size!" << endl;
@@ -150,9 +157,9 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Initialize transition matrix
   // -------------------------------------------------------------------------------------
 
-  for (uint ii = 0; ii < pow(10,7); ii++) {
+  for (int ii = 0; ii < pow(10,7); ii++) {
 
-    const vector<bool> new_state = random_change(ns.state,rnd(generator));
+    const vector<bool> new_state = random_change(ns.state, rnd(generator));
 
     const int old_energy = ns.energy();
     const int new_energy = ns.energy(new_state);
@@ -189,10 +196,10 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   ns.compute_weights_from_transitions();
 
-  for (uint ee = ns.network.energy_range - 1; ee > 0; ee--) {
-    const uint observations = ns.energy_observations(ee);
+  for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
+    const int observations = ns.energy_observations(ee);
     if (observations > 0) {
-      cout << setw(3) << int(ee) - int(ns.network.max_energy) << " "
+      cout << setw(3) << ee - ns.network.max_energy << " "
            << setw(10) << ns.ln_weights.at(ee) << " "
            << setw(8) << observations << " ";
       if (ee < 0){
@@ -203,25 +210,22 @@ int main(const int arg_num, const char *arg_vec[]) {
   }
   cout << endl;
 
-  ns.initialize_histograms();
+  ns.reset_histograms();
 
-  for (uint ii = 0; ii < pow(10,7); ii++) {
+  for (int ii = 0; ii < pow(10,7); ii++) {
 
-    const vector<bool> new_state = random_change(ns.state,rnd(generator));
-    const double acceptance_probability =
-      exp(ns.ln_weights.at(ns.energy(new_state)) - ns.ln_weights.at(ns.energy()));
-
-    if (rnd(generator) < acceptance_probability) {
+    const vector<bool> new_state = random_change(ns.state, rnd(generator));
+    if (rnd(generator) < ns.acceptance_probability(new_state)) {
       ns.state = new_state;
     }
     ns.update_histograms();
 
   }
 
-    for (uint ee = ns.network.energy_range - 1; ee > 0; ee--) {
-    const uint observations = ns.energy_observations(ee);
+  for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
+    const int observations = ns.energy_observations(ee);
     if (observations > 0) {
-      cout << setw(3) << int(ee) - int(ns.network.max_energy) << " "
+      cout << setw(3) << ee - ns.network.max_energy << " "
            << setw(8) << observations << " "
            << endl;
     }

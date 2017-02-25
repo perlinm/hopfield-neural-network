@@ -10,7 +10,7 @@ using namespace std;
 int gcd(const int a, const int b);
 
 // generate random state
-vector<bool> random_state(const uint nodes, uniform_real_distribution<double>& rnd,
+vector<bool> random_state(const int nodes, uniform_real_distribution<double>& rnd,
                           mt19937_64& generator);
 
 // make a random change to a given state using a random number on [0,1)
@@ -18,13 +18,13 @@ vector<bool> random_change(const vector<bool>& state, const double random);
 
 struct hopfield_network {
 
-  uint nodes;
+  int nodes;
   vector<vector<int>> couplings;
 
-  uint energy_scale;
-  uint max_energy;
-  uint max_energy_change;
-  uint energy_range;
+  int energy_scale;
+  int max_energy;
+  int max_energy_change;
+  int energy_range;
 
   hopfield_network(const vector<vector<bool>>& patterns);
 
@@ -44,8 +44,8 @@ struct network_simulation {
   const hopfield_network network;
 
   vector<bool> state;
-  vector<uint> energy_histogram;
-  vector<vector<uint>> state_histogram;
+  vector<int> energy_histogram;
+  vector<vector<int>> state_histogram;
 
   // the transition matrix tells us how many times we have moved
   //   from a given energy E with a specified energy difference dE
@@ -57,7 +57,7 @@ struct network_simulation {
   // number of independent samples of a given (negative) energy;
   // two samples of a given energy are considered independent if
   //   we have visited states with energy >= 0 between the samples
-  vector<uint> samples;
+  vector<int> samples;
 
   // logarithm of density of states
   vector<double> ln_dos;
@@ -70,6 +70,22 @@ struct network_simulation {
                      const vector<bool>& initial_state);
 
   // -------------------------------------------------------------------------------------
+  // Access methods for histograms and matrices
+  // -------------------------------------------------------------------------------------
+
+  // observations of a given energy
+  int energy_observations(const int energy) const;
+
+  // number of transitions from a given energy with a specified energy change
+  int transitions(const int energy, const int energy_change) const;
+
+  // number of transitions from a given energy to any other energy
+  int transitions_from(const int energy) const;
+
+  // actual transition matrix
+  double transition_matrix(const int to, const int from) const;
+
+  // -------------------------------------------------------------------------------------
   // Methods used in simulation
   // -------------------------------------------------------------------------------------
 
@@ -77,8 +93,9 @@ struct network_simulation {
   int energy(const vector<bool>& state) const { return network.energy(state); };
   int energy() const { return energy(state); };
 
-  // initialize all histograms with zeros
-  void initialize_histograms();
+  // reset all histograms and the visit log of visited energies
+  void reset_histograms();
+  void reset_visit_log();
 
   // update histograms with an observation of the current state
   void update_histograms();
@@ -86,30 +103,14 @@ struct network_simulation {
   // update sample count
   void update_samples(const int new_energy, const int old_energy);
 
-  // reset tally of energies visited since the last observation of states with energy >= 0
-  void reset_visit_log();
-
   // add to transition matrix
   void add_transition(const int energy, const int energy_change);
 
   // compute density of states and weight array from transition matrix
   void compute_weights_from_transitions();
 
-  // -------------------------------------------------------------------------------------
-  // Access methods for histograms and matrices
-  // -------------------------------------------------------------------------------------
-
-  // observations of a given energy
-  uint energy_observations(const int energy) const;
-
-  // number of transitions from a given energy with a specified energy change
-  uint transitions(const int energy, const int energy_change) const;
-
-  // number of transitions from a given energy to any other energy
-  uint transitions_from(const int energy) const;
-
-  // actual transition matrix
-  double transition_matrix(const int to, const int from) const;
+  // probability to accept a move into a new state
+  double acceptance_probability(const vector<bool>& new_state) const;
 
   // -------------------------------------------------------------------------------------
   // Printing methods
