@@ -115,6 +115,7 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
   reset_visit_log();
   samples = vector<int>(network.max_energy, 0);
   ln_weights = vector<double>(network.energy_range, 1);
+  ln_dos = vector<double>(network.energy_range, 0);
 };
 
 // ---------------------------------------------------------------------------------------
@@ -198,12 +199,12 @@ void network_simulation::add_transition(const int energy, const int energy_chang
 }
 
 // compute density of states and weight array from transition matrix
-void network_simulation::compute_weights_from_transitions() {
+void network_simulation::compute_weights_from_transitions(const double min_temp) {
 
   vector<double> ln_dos(network.energy_range, 0);
 
-  double max_dos = 0;
-  int max_dos_energy = 0;
+  double max_ln_dos = 0;
+  int max_ln_dos_energy = 0;
 
   // sweep across energies to construct the density of states
   for (int ee = 1; ee < network.energy_range; ee++) {
@@ -211,32 +212,41 @@ void network_simulation::compute_weights_from_transitions() {
     ln_dos.at(ee) = ln_dos.at(ee - 1);
     if (transitions_from(ee) == 0) continue;
 
-    double up_to_energy = 0;
-    double down_from_energy = 0;
+    double flux_up_to_this_energy = 0;
+    double flux_down_from_this_energy = 0;
     for (int smaller_ee = 0; smaller_ee < ee; smaller_ee++) {
-      up_to_energy += (exp(ln_dos.at(smaller_ee) - ln_dos.at(ee))
+      flux_up_to_this_energy += (exp(ln_dos.at(smaller_ee) - ln_dos.at(ee))
                          * transition_matrix(ee, smaller_ee));
-      down_from_energy += transition_matrix(smaller_ee, ee);
+      flux_down_from_this_energy += transition_matrix(smaller_ee, ee);
     }
-    if (up_to_energy > 0 && down_from_energy > 0) {
-      ln_dos.at(ee) += log(up_to_energy/down_from_energy);
+    if (flux_up_to_this_energy > 0 && flux_down_from_this_energy > 0) {
+      ln_dos.at(ee) += log(flux_up_to_this_energy/flux_down_from_this_energy);
     }
 
-    if (ln_dos.at(ee) > max_dos) {
-      max_dos = ln_dos.at(ee);
-      max_dos_energy = ee;
+    if (ln_dos.at(ee) > max_ln_dos) {
+      max_ln_dos = ln_dos.at(ee);
+      max_ln_dos_energy = ee;
     }
 
   }
 
+  int smallest_seen_energy = 0;
   for (int ee = 0; ee < network.energy_range; ee++) {
-    ln_dos.at(ee) -= max_dos;
+    if (energy_histogram.at(ee) != 0) {
+      smallest_seen_energy = ee;
+      break;
+    }
   }
-  for (int ee = 0; ee < max_dos_energy; ee++) {
+
+  for (int ee = network.energy_range - 1; ee > max_ln_dos_energy; ee--) {
+    ln_weights.at(ee) = -ln_dos.at(max_ln_dos_energy);
+  }
+  for (int ee = max_ln_dos_energy; ee > smallest_seen_energy; ee--) {
     ln_weights.at(ee) = -ln_dos.at(ee);
   }
-  for (int ee = max_dos_energy; ee < network.energy_range; ee++) {
-    ln_weights.at(ee) = -ln_dos.at(max_dos_energy);
+  for (int ee = smallest_seen_energy; ee >= 0; ee--) {
+    ln_weights.at(ee) = (-ln_dos.at(smallest_seen_energy)
+                         - abs(smallest_seen_energy - ee) / min_temp);
   }
 
 }
@@ -245,6 +255,18 @@ void network_simulation::compute_weights_from_transitions() {
 double network_simulation::acceptance_probability(const vector<bool>& new_state) const {
   return exp(ln_weights.at(energy(new_state)) - ln_weights.at(energy()));
 }
+
+// compute density of states from the energy histogram
+void network_simulation::compute_dos() {
+  double max_ln_dos = 0;
+  for (int ee = 0; ee < network.energy_range; ee++) {
+    ln_dos.at(ee) = log(energy_histogram.at(ee)) - ln_weights.at(ee);
+    max_ln_dos = max(ln_dos.at(ee), max_ln_dos);
+  }
+  for (int ee = 0; ee < network.energy_range; ee++) {
+    ln_dos.at(ee) -= max_ln_dos;
+  }
+};
 
 // ---------------------------------------------------------------------------------------
 // Printing methods

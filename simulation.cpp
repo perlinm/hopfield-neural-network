@@ -194,7 +194,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     ns.update_samples(new_energy, old_energy);
   }
 
-  ns.compute_weights_from_transitions();
+  ns.compute_weights_from_transitions(min_temp);
 
   for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
     const int observations = ns.energy_observations(ee);
@@ -222,11 +222,14 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   }
 
+  ns.compute_dos();
+
   for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
     const int observations = ns.energy_observations(ee);
     if (observations > 0) {
       cout << setw(3) << ee - ns.network.max_energy << " "
            << setw(8) << observations << " "
+           << setw(10) << ns.ln_dos.at(ee) << " "
            << endl;
     }
   }

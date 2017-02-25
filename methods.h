@@ -59,12 +59,12 @@ struct network_simulation {
   //   we have visited states with energy >= 0 between the samples
   vector<int> samples;
 
-  // logarithm of density of states
-  vector<double> ln_dos;
-
   // logarithm of weights determining the transition probability
   //   between energies during simulation
   vector<double> ln_weights;
+
+  // logarithm of density of states
+  vector<double> ln_dos;
 
   network_simulation(const vector<vector<bool>>& patterns,
                      const vector<bool>& initial_state);
@@ -107,10 +107,13 @@ struct network_simulation {
   void add_transition(const int energy, const int energy_change);
 
   // compute density of states and weight array from transition matrix
-  void compute_weights_from_transitions();
+  void compute_weights_from_transitions(const double min_temp);
 
   // probability to accept a move into a new state
   double acceptance_probability(const vector<bool>& new_state) const;
+
+  // compute density of states from the energy histogram
+  void compute_dos();
 
   // -------------------------------------------------------------------------------------
   // Printing methods
