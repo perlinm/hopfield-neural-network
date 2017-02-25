@@ -46,15 +46,24 @@ int main(const int arg_num, const char *arg_vec[]) {
      "input file containing patterns stored in the neural network")
     ;
 
-
-  double min_temp;
-  int tpf; // "transition probability factor"
+  bool all_temps;
+  bool inf_temp;
+  bool fixed_temp;
+  double temp_scale;
+  int tpff; // "transition probability fudge factor"
 
   po::options_description simulation_options("Simulation options",help_text_length);
   simulation_options.add_options()
-    ("min_temp", po::value<double>(&min_temp)->default_value(0.01,"0.01"),
-     "minimum temperature of interest")
-    ("probability_factor", po::value<int>(&tpf)->default_value(1),
+    ("all_temps", po::value<bool>(&all_temps)->default_value(true)->implicit_value(true),
+     "run an all-temperature simulation")
+    ("inf_temp", po::value<bool>(&inf_temp)->default_value(false)->implicit_value(true),
+     "run an infinite temperature simulation")
+    ("fixed_temp",
+     po::value<bool>(&fixed_temp)->default_value(false)->implicit_value(true),
+     "run a fixed-temperature simulation")
+    ("temp_scale", po::value<double>(&temp_scale)->default_value(1),
+     "temperature scale of interest in simulation")
+    ("transition_factor", po::value<int>(&tpff)->default_value(1),
      "fudge factor in computation of move acceptance probability"
      " during transition matrix initialization")
     ;
@@ -85,6 +94,9 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   // we can specify either nodes, or a pattern file; not both
   assert(!nodes || pattern_file.empty());
+
+  // we must choose some temperature option
+  assert(inf_temp || fixed_temp || all_temps);
 
   // if we specified a pattern file, make sure it exists
   assert(pattern_file.empty() || fs::exists(pattern_file));
@@ -136,6 +148,9 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   network_simulation ns(patterns, random_state(nodes, rnd, generator));
 
+  // adjust temperature scale to be compatible with the energy units used in simulation
+  temp_scale *= nodes/ns.network.energy_scale;
+
   cout << endl
        << "maximum energy: " << ns.network.max_energy
        << " (of " << pattern_number * nodes * (nodes - 1) / ns.network.energy_scale
@@ -157,60 +172,65 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Initialize transition matrix
   // -------------------------------------------------------------------------------------
 
-  for (int ii = 0; ii < pow(10,7); ii++) {
+  // initialize weight array
+  if (inf_temp) {
 
-    const vector<bool> new_state = random_change(ns.state, rnd(generator));
+    cout << "starting an infinite temperature simulation" << endl;
+    ns.ln_weights = vector<double>(ns.network.energy_range, 1);
 
-    const int old_energy = ns.energy();
-    const int new_energy = ns.energy(new_state);
-    const int energy_change = new_energy - old_energy;
+  } else if (fixed_temp) {
 
-    ns.add_transition(old_energy, energy_change);
 
-    if (energy_change < 0) {
-      // if the energy change for the proposed move is negative, always accept it
-      ns.state = new_state;
+    cout << "starting a fixed temperature simulation" << endl;
+    for (int ee = 0; ee < ns.network.energy_range; ee++) {
+      ns.ln_weights.at(ee) = -ee/temp_scale;
+    }
 
-    } else {
-      // otherwise, accept the move with some probability
-      const double old_norm = ns.transitions_from(old_energy);
-      const double new_norm = ns.transitions_from(new_energy);
+  } else if (all_temps) {
 
-      const double forward_flux
-        = double(ns.transitions(old_energy, energy_change) + tpf) / (old_norm + tpf);
-      const double backward_flux
-        = double(ns.transitions(new_energy, -energy_change) + tpf) / (new_norm + tpf);
+    cout << "initializing transition matrix for an all-temperature simulation..." << endl;
+    for (int ii = 0; ii < pow(10,7); ii++) {
 
-      const double transition_probability = max(forward_flux/backward_flux,
-                                                exp(-energy_change/min_temp));
+      const vector<bool> new_state = random_change(ns.state, rnd(generator));
 
-      if (rnd(generator) < transition_probability) {
+      const int old_energy = ns.energy();
+      const int new_energy = ns.energy(new_state);
+      const int energy_change = new_energy - old_energy;
+
+      ns.add_transition(old_energy, energy_change);
+
+      if (energy_change < 0) {
+        // if the energy change for the proposed move is negative, always accept it
         ns.state = new_state;
+
+      } else {
+        // otherwise, accept the move with some probability
+        const double old_norm = ns.transitions_from(old_energy);
+        const double new_norm = ns.transitions_from(new_energy);
+
+        const double forward_flux
+          = double(ns.transitions(old_energy, energy_change) + tpff) / (old_norm + tpff);
+        const double backward_flux
+          = double(ns.transitions(new_energy, -energy_change) + tpff) / (new_norm + tpff);
+
+        const double transition_probability = max(forward_flux/backward_flux,
+                                                  exp(-energy_change/temp_scale));
+
+        if (rnd(generator) < transition_probability) {
+          ns.state = new_state;
+        }
       }
+
+      // update histograms and sample counts
+      ns.update_histograms();
+      ns.update_samples(new_energy, old_energy);
     }
 
-    // update histograms and sample counts
-    ns.update_histograms();
-    ns.update_samples(new_energy, old_energy);
+    ns.compute_weights_from_transitions(temp_scale);
+    ns.reset_histograms();
+
+    cout << "starting an all-temperature simulation" << endl;
   }
-
-  ns.compute_weights_from_transitions(min_temp);
-
-  for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
-    const int observations = ns.energy_observations(ee);
-    if (observations > 0) {
-      cout << setw(3) << ee - ns.network.max_energy << " "
-           << setw(10) << ns.ln_weights.at(ee) << " "
-           << setw(8) << observations << " ";
-      if (ee < 0){
-        cout << ns.samples.at(-ee) << " ";
-      }
-      cout << endl;
-    }
-  }
-  cout << endl;
-
-  ns.reset_histograms();
 
   for (int ii = 0; ii < pow(10,7); ii++) {
 

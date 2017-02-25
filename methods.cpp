@@ -201,6 +201,7 @@ void network_simulation::add_transition(const int energy, const int energy_chang
 // compute density of states and weight array from transition matrix
 void network_simulation::compute_weights_from_transitions(const double min_temp) {
 
+  ln_weights = vector<double>(network.energy_range, 1);
   vector<double> ln_dos(network.energy_range, 0);
 
   double max_ln_dos = 0;
@@ -258,6 +259,8 @@ double network_simulation::acceptance_probability(const vector<bool>& new_state)
 
 // compute density of states from the energy histogram
 void network_simulation::compute_dos() {
+  ln_dos = vector<double>(network.energy_range);
+
   double max_ln_dos = 0;
   for (int ee = 0; ee < network.energy_range; ee++) {
     ln_dos.at(ee) = log(energy_histogram.at(ee)) - ln_weights.at(ee);
