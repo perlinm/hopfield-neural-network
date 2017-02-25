@@ -20,16 +20,17 @@ struct hopfield_network {
 
   uint nodes;
   vector<vector<int>> couplings;
+
+  uint energy_scale;
   uint max_energy;
   uint max_energy_change;
-  uint energy_scale;
   uint energy_range;
 
   hopfield_network(const vector<vector<bool>>& patterns);
 
   // energy of the network in a given state
-  // note: this energy is a factor of [nodes/energy_scale] greater
-  //       than the regular definition
+  // note: this energy is shifted up by the maximum energy, and is an additional
+  //       factor of [nodes/energy_scale] greater than the regular definition
   int energy(const vector<bool>& state) const;
 
   void print_couplings() const;
@@ -73,7 +74,7 @@ struct network_simulation {
   // -------------------------------------------------------------------------------------
 
   // energy of a given state
-  int energy(const vector<bool>& state) const;
+  int energy(const vector<bool>& state) const { return network.energy(state); };
   int energy() const { return energy(state); };
 
   // initialize all histograms with zeros
@@ -92,10 +93,7 @@ struct network_simulation {
   void add_transition(const int energy, const int energy_change);
 
   // compute density of states and weight array from transition matrix
-  void compute_dos_and_weights_from_transitions();
-
-  // probability of accepting a transition from one energy to another one
-  double acceptance_probability(const vector<bool>& new_state) const;
+  void compute_weights_from_transitions();
 
   // -------------------------------------------------------------------------------------
   // Access methods for histograms and matrices

@@ -68,8 +68,8 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
 };
 
 // energy of the network in a given state
-// note: this energy is a factor of [nodes/energy_scale] greater
-//       than the regular definition
+// note: this energy is shifted up by the maximum energy, and is an additional
+//       factor of [nodes/energy_scale] greater than the regular definition
 int hopfield_network::energy(const vector<bool>& state) const {
   int sum = 0;
   for (uint ii = 0; ii < nodes; ii++) {
@@ -77,7 +77,7 @@ int hopfield_network::energy(const vector<bool>& state) const {
       sum += couplings.at(ii).at(jj) * (2*state.at(ii)-1) * (2*state.at(jj)-1);
     }
   }
-  return -sum/int(energy_scale);
+  return -sum/int(energy_scale) + max_energy;
 }
 
 
@@ -114,18 +114,13 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
 
   reset_visit_log();
   samples = vector<uint>(network.max_energy, 0);
-  ln_weights = vector<double>(2*network.max_energy + 1, 1);
+  ln_weights = vector<double>(network.energy_range, 1);
 };
 
 
 // ---------------------------------------------------------------------------------------
 // Methods used in simulation
 // ---------------------------------------------------------------------------------------
-
-// energy of a given state
-int network_simulation::energy(const vector<bool>& state) const {
-  return network.energy(state);
-}
 
 // initialize all histograms with zeros
 void network_simulation::initialize_histograms() {
@@ -138,10 +133,10 @@ void network_simulation::initialize_histograms() {
 
 // update histograms with an observation of the current state
 void network_simulation::update_histograms() {
-  const uint energy_index = energy(state) + network.max_energy;
-  energy_histogram.at(energy_index)++;
+  const uint ee = energy(state);
+  energy_histogram.at(ee)++;
   for (uint ii = 0; ii < network.nodes; ii++) {
-    state_histogram.at(ii).at(energy_index) += state.at(ii);
+    state_histogram.at(ii).at(ee) += state.at(ii);
   }
 }
 
@@ -167,63 +162,52 @@ void network_simulation::reset_visit_log() {
 
 // add to transition matrix
 void network_simulation::add_transition(const int energy, const int energy_change) {
-  const uint ee = energy + network.max_energy;
-  const uint de = energy_change + network.max_energy_change;
-  energy_transitions.at(ee).at(de)++;
+  energy_transitions.at(energy).at(energy_change + network.max_energy_change)++;
 }
 
 // compute density of states and weight array from transition matrix
-void network_simulation::compute_dos_and_weights_from_transitions() {
+void network_simulation::compute_weights_from_transitions() {
 
-  ln_dos = vector<double>(network.energy_range, 0);
+  vector<double> ln_dos(network.energy_range, 0);
 
   double max_dos = 0;
-  uint max_dos_index = 0;
+  uint max_dos_energy = 0;
 
-  // sweep down across energies to construct the density of states
-  for (int energy = int(network.max_energy)-1;
-       energy >= -int(network.max_energy); energy--) {
-    const uint ee = energy + network.max_energy;
+  // sweep across energies to construct the density of states
+  for (uint ee = 1; ee < network.energy_range; ee++) {
 
-    ln_dos.at(ee) = ln_dos.at(ee+1);
-    if (transitions_from(energy) == 0) continue;
+    ln_dos.at(ee) = ln_dos.at(ee - 1);
+    if (transitions_from(ee) == 0) continue;
 
-    double down_to_energy = 0;
-    double up_from_energy = 0;
-    for (int larger_energy = energy+1;
-         larger_energy < int(network.max_energy); larger_energy++) {
-      const uint le = larger_energy + network.max_energy;
-      down_to_energy += (exp(ln_dos.at(le) - ln_dos.at(ee))
-                         * transition_matrix(energy, larger_energy));
-      up_from_energy += transition_matrix(larger_energy, energy);
+    double up_to_energy = 0;
+    double down_from_energy = 0;
+    for (uint smaller_ee = 0; smaller_ee < ee; smaller_ee++) {
+      up_to_energy += (exp(ln_dos.at(smaller_ee) - ln_dos.at(ee))
+                         * transition_matrix(ee, smaller_ee));
+      down_from_energy += transition_matrix(smaller_ee, ee);
     }
-    if (down_to_energy > 0 && up_from_energy > 0) {
-      ln_dos.at(ee) += log(down_to_energy/up_from_energy);
+    if (up_to_energy > 0 && down_from_energy > 0) {
+      ln_dos.at(ee) += log(up_to_energy/down_from_energy);
     }
 
     if (ln_dos.at(ee) > max_dos) {
       max_dos = ln_dos.at(ee);
-      max_dos_index = ee;
+      max_dos_energy = ee;
     }
 
   }
 
+  // uint lowest_seen_energy = 0;
   for (uint ee = 0; ee < network.energy_range; ee++) {
     ln_dos.at(ee) -= max_dos;
   }
-  for (uint ee = 0; ee < max_dos_index; ee++) {
+  for (uint ee = 0; ee < max_dos_energy; ee++) {
     ln_weights.at(ee) = -ln_dos.at(ee);
   }
-  for (uint ee = max_dos_index; ee < network.energy_range; ee++) {
-    ln_weights.at(ee) = -ln_dos.at(max_dos_index);
+  for (uint ee = max_dos_energy; ee < network.energy_range; ee++) {
+    ln_weights.at(ee) = -ln_dos.at(max_dos_energy);
   }
 
-}
-
-// probability of accepting a transition into a new state
-double network_simulation::acceptance_probability(const vector<bool>& new_state) const {
-  return exp(ln_weights.at(energy(new_state) + network.max_energy)
-             - ln_weights.at(energy(state) + network.max_energy));
 }
 
 // ---------------------------------------------------------------------------------------
@@ -232,13 +216,11 @@ double network_simulation::acceptance_probability(const vector<bool>& new_state)
 
 // observations of a given energy
 uint network_simulation::energy_observations(const int energy) const {
-  return energy_histogram.at(energy + network.max_energy);
+  return energy_histogram.at(energy);
 }
 // number of transitions from a given energy with a specified energy change
 uint network_simulation::transitions(const int energy, const int energy_change) const {
-  const uint ee = energy + network.max_energy;
-  const uint de = energy_change + network.max_energy_change;
-  return energy_transitions.at(ee).at(de);
+  return energy_transitions.at(energy).at(energy_change + network.max_energy_change);
 }
 
 // number of transitions from a given energy to any other energy

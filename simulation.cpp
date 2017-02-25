@@ -187,22 +187,16 @@ int main(const int arg_num, const char *arg_vec[]) {
     ns.update_samples(new_energy, old_energy);
   }
 
-  ns.compute_dos_and_weights_from_transitions();
+  ns.compute_weights_from_transitions();
 
-  for (int energy = int(ns.network.max_energy);
-       energy >= -int(ns.network.max_energy); energy--) {
-    const uint observations = ns.energy_observations(energy);
+  for (uint ee = ns.network.energy_range - 1; ee > 0; ee--) {
+    const uint observations = ns.energy_observations(ee);
     if (observations > 0) {
-      cout << setw(3)
-           << energy << " "
-           << setw(10)
-           << ns.ln_dos.at(energy + ns.network.max_energy) << " "
-           << setw(10)
-           << ns.ln_weights.at(energy + ns.network.max_energy) << " "
-           << setw(8)
-           << observations << " ";
-      if (energy < 0){
-        cout << ns.samples.at(-energy) << " ";
+      cout << setw(3) << int(ee) - int(ns.network.max_energy) << " "
+           << setw(10) << ns.ln_weights.at(ee) << " "
+           << setw(8) << observations << " ";
+      if (ee < 0){
+        cout << ns.samples.at(-ee) << " ";
       }
       cout << endl;
     }
@@ -214,20 +208,21 @@ int main(const int arg_num, const char *arg_vec[]) {
   for (uint ii = 0; ii < pow(10,7); ii++) {
 
     const vector<bool> new_state = random_change(ns.state,rnd(generator));
-    if (rnd(generator) < ns.acceptance_probability(new_state)) {
+    const double acceptance_probability =
+      exp(ns.ln_weights.at(ns.energy(new_state)) - ns.ln_weights.at(ns.energy()));
+
+    if (rnd(generator) < acceptance_probability) {
       ns.state = new_state;
     }
     ns.update_histograms();
 
   }
 
-    for (int energy = int(ns.network.max_energy);
-       energy >= -int(ns.network.max_energy); energy--) {
-    const uint observations = ns.energy_observations(energy);
+    for (uint ee = ns.network.energy_range - 1; ee > 0; ee--) {
+    const uint observations = ns.energy_observations(ee);
     if (observations > 0) {
-      cout << setw(log10(ns.network.max_energy)+2)
-           << energy << " "
-           << observations << " "
+      cout << setw(3) << int(ee) - int(ns.network.max_energy) << " "
+           << setw(8) << observations << " "
            << endl;
     }
   }
