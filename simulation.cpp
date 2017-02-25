@@ -51,30 +51,46 @@ int main(const int arg_num, const char *arg_vec[]) {
   bool inf_temp;
   bool fixed_temp;
   double temp_scale;
-  int tpff; // "transition probability fudge factor"
 
-  po::options_description simulation_options("Simulation options",help_text_length);
+  po::options_description simulation_options("General simulation options",
+                                             help_text_length);
   simulation_options.add_options()
     ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
-     "log base 10 of the number of iterations to simulate")
+     "log10 of the number of iterations to simulate")
+    ("all_temps", po::value<bool>(&all_temps)->default_value(true)->implicit_value(true),
+     "run an all-temperature simulation")
     ("inf_temp", po::value<bool>(&inf_temp)->default_value(false)->implicit_value(true),
      "run an infinite temperature simulation")
     ("fixed_temp",
      po::value<bool>(&fixed_temp)->default_value(false)->implicit_value(true),
      "run a fixed-temperature simulation")
-    ("all_temps", po::value<bool>(&all_temps)->default_value(true)->implicit_value(true),
-     "run an all-temperature simulation")
-    ("temp_scale", po::value<double>(&temp_scale)->default_value(1),
+    ("temp_scale", po::value<double>(&temp_scale)->default_value(0.1),
      "temperature scale of interest in simulation")
+
+    ;
+
+  int log10_init_cycle;
+  double target_sample_error;
+  int tpff; // "transition probability fudge factor"
+
+  po::options_description all_temps_options("All temperature simulation options",
+                                            help_text_length);
+  all_temps_options.add_options()
+    ("init_cycle", po::value<int>(&log10_init_cycle)->default_value(7),
+     "log10 of the number of iterations in one initialization cycle")
+    ("sample_error", po::value<double>(&target_sample_error)->default_value(0.01,"0.01"),
+     "the transition matrix initialization routine terminates when it achieves"
+     " this expected fractional sample error at given minimum temperature")
     ("transition_factor", po::value<int>(&tpff)->default_value(1),
      "fudge factor in computation of move acceptance probability"
      " during transition matrix initialization")
     ;
 
-  po::options_description all("Allowed options");
+  po::options_description all("All options");
   all.add(general);
   all.add(network_parameters);
   all.add(simulation_options);
+  all.add(all_temps_options);
 
   // collect inputs
   po::variables_map inputs;
@@ -175,7 +191,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   }
 
   // -------------------------------------------------------------------------------------
-  // Initialize transition matrix
+  // Initialize weight array
   // -------------------------------------------------------------------------------------
 
   // initialize weight array
@@ -194,61 +210,80 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   } else if (all_temps) {
 
-    cout << "initializing transition matrix for an all-temperature simulation..." << endl;
-    for (int ii = 0; ii < pow(10,log10_iterations); ii++) {
+    cout << "initializing transition matrix for an all-temperature simulation..." << endl
+         << "cycles sample_error" << endl;
+    int cycles = 0;
+    double sample_error;
+    do {
+      for (int ii = 0; ii < pow(10,log10_init_cycle); ii++) {
 
-      const vector<bool> new_state = random_change(ns.state, rnd(generator));
+        const vector<bool> new_state = random_change(ns.state, rnd(generator));
 
-      const int old_energy = ns.energy();
-      const int new_energy = ns.energy(new_state);
-      const int energy_change = new_energy - old_energy;
+        const int old_energy = ns.energy();
+        const int new_energy = ns.energy(new_state);
+        const int energy_change = new_energy - old_energy;
 
-      ns.add_transition(old_energy, energy_change);
+        ns.add_transition(old_energy, energy_change);
 
-      if (energy_change < 0) {
-        // if the energy change for the proposed move is negative, always accept it
-        ns.state = new_state;
-
-      } else {
-        // otherwise, accept the move with some probability
-        const double old_norm = ns.transitions_from(old_energy);
-        const double new_norm = ns.transitions_from(new_energy);
-
-        const double forward_flux
-          = double(ns.transitions(old_energy, energy_change) + tpff) / (old_norm + tpff);
-        const double backward_flux
-          = double(ns.transitions(new_energy, -energy_change) + tpff) / (new_norm + tpff);
-
-        const double transition_probability = max(forward_flux/backward_flux,
-                                                  exp(-energy_change/temp_scale));
-
-        if (rnd(generator) < transition_probability) {
+        if (energy_change < 0) {
+          // if the energy change for the proposed move is negative, always accept it
           ns.state = new_state;
+
+        } else {
+          // otherwise, accept the move with some probability
+          const double old_norm = ns.transitions_from(old_energy);
+          const double new_norm = ns.transitions_from(new_energy);
+
+          const double forward_flux
+            = double(ns.transitions(old_energy, energy_change) + tpff) / (old_norm + tpff);
+          const double backward_flux
+            = double(ns.transitions(new_energy, -energy_change) + tpff) / (new_norm + tpff);
+
+          const double transition_probability = max(forward_flux/backward_flux,
+                                                    exp(-energy_change/temp_scale));
+
+          if (rnd(generator) < transition_probability) {
+            ns.state = new_state;
+          }
         }
+
+        // update histograms and sample counts
+        ns.update_histograms();
+        ns.update_samples(new_energy, old_energy);
       }
 
-      // update histograms and sample counts
-      ns.update_histograms();
-      ns.update_samples(new_energy, old_energy);
-    }
+      ns.compute_dos_and_weights_from_transitions(temp_scale);
 
-    ns.compute_dos_and_weights_from_transitions(temp_scale);
+      cycles++;
+      sample_error = ns.fractional_sample_error(temp_scale);
+      cout << cycles << " " << sample_error << endl;
+
+    } while (sample_error > target_sample_error);
 
     if (debug) {
+      cout << endl
+           << "energy observations ln_dos samples"
+           << endl;
       for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
         if (ns.energy_histogram.at(ee) != 0) {
-          cout << setw(4) << ee << " "
-               << setw(10) << ns.energy_histogram.at(ee) << " "
+          cout << setw(log10(2*ns.network.max_energy)+2)
+               << ee - ns.network.max_energy << " "
+               << setw(log10_iterations) << ns.energy_histogram.at(ee) << " "
                << setw(10) << ns.ln_dos.at(ee) << " "
-               << setw(10) << ns.samples.at(ee) << " "
+               << setw(log10_iterations) << ns.samples.at(ee) << " "
                << endl;
         }
       }
+      cout << endl;
     }
 
     ns.reset_histograms();
     cout << "starting an all-temperature simulation" << endl;
   }
+
+  // -------------------------------------------------------------------------------------
+  // Run simulation
+  // -------------------------------------------------------------------------------------
 
   for (int ii = 0; ii < pow(10,log10_iterations); ii++) {
 
@@ -262,15 +297,20 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   ns.compute_dos();
 
-  for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
-    const int observations = ns.energy_histogram.at(ee);
-    if (observations > 0) {
-      cout << setw(3) << ee - ns.network.max_energy << " "
-           << setw(8) << observations << " "
-           << setw(10) << ns.ln_dos.at(ee) << " "
-           << endl;
+  if (debug) {
+    cout << endl
+         << "energy observations ln_dos"
+         << endl;
+    for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
+      const int observations = ns.energy_histogram.at(ee);
+      if (observations > 0) {
+        cout << setw(log10(2*ns.network.max_energy)+2)
+             << ee - ns.network.max_energy << " "
+             << setw(log10_iterations) << observations << " "
+             << setw(10) << ns.ln_dos.at(ee) << " "
+             << endl;
+      }
     }
   }
-
 
 }
