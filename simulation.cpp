@@ -46,6 +46,7 @@ int main(const int arg_num, const char *arg_vec[]) {
      "input file containing patterns stored in the neural network")
     ;
 
+  int log10_iterations;
   bool all_temps;
   bool inf_temp;
   bool fixed_temp;
@@ -54,6 +55,8 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   po::options_description simulation_options("Simulation options",help_text_length);
   simulation_options.add_options()
+    ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
+     "log base 10 of the number of iterations to simulate")
     ("all_temps", po::value<bool>(&all_temps)->default_value(true)->implicit_value(true),
      "run an all-temperature simulation")
     ("inf_temp", po::value<bool>(&inf_temp)->default_value(false)->implicit_value(true),
@@ -97,6 +100,9 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   // we must choose some temperature option
   assert(inf_temp || fixed_temp || all_temps);
+
+  // the temperature scale cannot be zero
+  assert(temp_scale != 0);
 
   // if we specified a pattern file, make sure it exists
   assert(pattern_file.empty() || fs::exists(pattern_file));
@@ -189,7 +195,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   } else if (all_temps) {
 
     cout << "initializing transition matrix for an all-temperature simulation..." << endl;
-    for (int ii = 0; ii < pow(10,7); ii++) {
+    for (int ii = 0; ii < pow(10,log10_iterations); ii++) {
 
       const vector<bool> new_state = random_change(ns.state, rnd(generator));
 
@@ -232,7 +238,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     cout << "starting an all-temperature simulation" << endl;
   }
 
-  for (int ii = 0; ii < pow(10,7); ii++) {
+  for (int ii = 0; ii < pow(10,log10_iterations); ii++) {
 
     const vector<bool> new_state = random_change(ns.state, rnd(generator));
     if (rnd(generator) < ns.acceptance_probability(new_state)) {
@@ -245,7 +251,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   ns.compute_dos();
 
   for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
-    const int observations = ns.energy_observations(ee);
+    const int observations = ns.energy_histogram.at(ee);
     if (observations > 0) {
       cout << setw(3) << ee - ns.network.max_energy << " "
            << setw(8) << observations << " "

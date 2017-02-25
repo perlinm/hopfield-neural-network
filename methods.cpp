@@ -122,10 +122,6 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
 // Access methods for histograms and matrices
 // ---------------------------------------------------------------------------------------
 
-// observations of a given energy
-int network_simulation::energy_observations(const int energy) const {
-  return energy_histogram.at(energy);
-}
 // number of transitions from a given energy with a specified energy change
 int network_simulation::transitions(const int energy, const int energy_change) const {
   return energy_transitions.at(energy).at(energy_change + network.max_energy_change);

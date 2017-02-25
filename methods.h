@@ -73,9 +73,6 @@ struct network_simulation {
   // Access methods for histograms and matrices
   // -------------------------------------------------------------------------------------
 
-  // observations of a given energy
-  int energy_observations(const int energy) const;
-
   // number of transitions from a given energy with a specified energy change
   int transitions(const int energy, const int energy_change) const;
 
