@@ -40,7 +40,8 @@ lib_flags = {"eigen3" : "$(cat {}) {}".format(eigen_dirs,mkl_flags),
              "boost/program_options" : "-lboost_program_options",
              "gsl" : "-lgsl"}
 
-global_dependencies = [ mkl_root, eigen_dirs ]
+global_dependencies = []
+# global_dependencies = [ mkl_root, eigen_dirs ]
 
 fac_text = ""
 used_libraries = []

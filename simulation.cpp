@@ -1,5 +1,3 @@
-#define EIGEN_USE_MKL_ALL
-
 #include <iostream> // for standard output
 #include <iomanip> // for io manipulation (e.g. setw)
 #include <random> // for randomness
@@ -8,28 +6,19 @@
 #include <boost/filesystem.hpp> // filesystem path manipulation library
 #include <boost/program_options.hpp> // options parsing library
 
-#include <eigen3/Eigen/Dense> // linear algebra library
-
 #include "methods.h"
 
 using namespace std;
-using namespace Eigen;
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
 int main(const int arg_num, const char *arg_vec[]) {
 
   // -------------------------------------------------------------------------------------
-  // Define some constants
+  // Set input options
   // -------------------------------------------------------------------------------------
 
   const uint help_text_length = 85;
-
-  const string default_pattern_file = "default-patterns.txt";
-
-  // -------------------------------------------------------------------------------------
-  // Set input options
-  // -------------------------------------------------------------------------------------
 
   unsigned long long int seed;
   bool debug;
@@ -43,25 +32,27 @@ int main(const int arg_num, const char *arg_vec[]) {
      "enable debug mode")
     ;
 
-  uint nodes = 0;
-  uint pattern_number = 0;
+  uint nodes;
+  uint pattern_number;
   string pattern_file;
 
   po::options_description network_parameters("Network parameters",help_text_length);
   network_parameters.add_options()
-    ("nodes", po::value<uint>(&nodes), "number of nodes which make up the network")
-    ("patterns", po::value<uint>(&pattern_number), "number of random patterns to use")
+    ("nodes", po::value<uint>(&nodes)->default_value(10),
+     "number of nodes which make up the network")
+    ("patterns", po::value<uint>(&pattern_number)->default_value(10),
+     "number of random patterns to use")
     ("pattern_file", po::value<string>(&pattern_file),
      "input file containing patterns stored in the neural network")
     ;
 
 
-  double min_temperature;
+  double min_temp;
   uint tpf; // "transition probability factor"
 
   po::options_description simulation_options("Simulation options",help_text_length);
   simulation_options.add_options()
-    ("min_temp", po::value<double>(&min_temperature)->default_value(0.1,"0.1"),
+    ("min_temp", po::value<double>(&min_temp)->default_value(0.01,"0.01"),
      "minimum temperature of interest")
     ("probability_factor", po::value<uint>(&tpf)->default_value(1),
      "fudge factor in computation of move acceptance probability"
@@ -88,14 +79,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Process and run sanity checks on inputs
   // -------------------------------------------------------------------------------------
 
-  // by default, use the same number of patterns as there are nodes
-  if (nodes && !pattern_number) pattern_number = nodes;
-
   // if we specified a pattern file, make sure it exists
   assert(pattern_file.empty() || fs::exists(pattern_file));
-
-  // if we did not specify anything, use a default pattern file
-  if (!nodes && pattern_file.empty()) pattern_file = default_pattern_file;
 
   // determine whether we are using a pattern file afterall
   const bool using_pattern_file = !pattern_file.empty();
@@ -165,7 +150,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Initialize transition matrix
   // -------------------------------------------------------------------------------------
 
-  for (uint ii = 0; ii < pow(10,6); ii++) {
+  for (uint ii = 0; ii < pow(10,7); ii++) {
 
     const vector<bool> new_state = random_change(ns.state,rnd(generator));
 
@@ -189,8 +174,8 @@ int main(const int arg_num, const char *arg_vec[]) {
       const double backward_flux
         = double(ns.transitions(new_energy, -energy_change) + tpf) / (new_norm + tpf);
 
-      const double transition_probability
-        = max(forward_flux/backward_flux, exp(-energy_change/min_temperature));
+      const double transition_probability = max(forward_flux/backward_flux,
+                                                exp(-energy_change/min_temp));
 
       if (rnd(generator) < transition_probability) {
         ns.state = new_state;
@@ -202,15 +187,19 @@ int main(const int arg_num, const char *arg_vec[]) {
     ns.update_samples(new_energy, old_energy);
   }
 
-  ns.compute_dos_and_weights();
+  ns.compute_dos_and_weights_from_transitions();
 
   for (int energy = int(ns.network.max_energy);
        energy >= -int(ns.network.max_energy); energy--) {
     const uint observations = ns.energy_observations(energy);
     if (observations > 0) {
-      cout << setw(log10(ns.network.max_energy)+2)
+      cout << setw(3)
            << energy << " "
+           << setw(10)
            << ns.ln_dos.at(energy + ns.network.max_energy) << " "
+           << setw(10)
+           << ns.ln_weights.at(energy + ns.network.max_energy) << " "
+           << setw(8)
            << observations << " ";
       if (energy < 0){
         cout << ns.samples.at(-energy) << " ";
@@ -218,5 +207,30 @@ int main(const int arg_num, const char *arg_vec[]) {
       cout << endl;
     }
   }
+  cout << endl;
+
+  ns.initialize_histograms();
+
+  for (uint ii = 0; ii < pow(10,7); ii++) {
+
+    const vector<bool> new_state = random_change(ns.state,rnd(generator));
+    if (rnd(generator) < ns.acceptance_probability(new_state)) {
+      ns.state = new_state;
+    }
+    ns.update_histograms();
+
+  }
+
+    for (int energy = int(ns.network.max_energy);
+       energy >= -int(ns.network.max_energy); energy--) {
+    const uint observations = ns.energy_observations(energy);
+    if (observations > 0) {
+      cout << setw(log10(ns.network.max_energy)+2)
+           << energy << " "
+           << observations << " "
+           << endl;
+    }
+  }
+
 
 }

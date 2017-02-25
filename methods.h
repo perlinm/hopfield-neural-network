@@ -1,14 +1,10 @@
 #pragma once
-#define EIGEN_USE_MKL_ALL
 
 #include <iostream> // for standard output
 #include <iomanip> // for io manipulation (e.g. setw)
 #include <random> // for randomness
 
-#include <eigen3/Eigen/Dense> // linear algebra library
-
 using namespace std;
-using namespace Eigen;
 
 // greatest common divisor
 int gcd(const int a, const int b);
@@ -23,7 +19,7 @@ vector<bool> random_change(const vector<bool>& state, const double random);
 struct hopfield_network {
 
   uint nodes;
-  MatrixXi couplings;
+  vector<vector<int>> couplings;
   uint max_energy;
   uint max_energy_change;
   uint energy_scale;
@@ -52,7 +48,7 @@ struct network_simulation {
 
   // the transition matrix tells us how many times we have moved
   //   from a given energy E with a specified energy difference dE
-  MatrixXi energy_transitions;
+  vector<vector<int>> energy_transitions;
 
   // have we visited this (negative) energy at least once since
   //   the last observation of states with energy >= 0?
@@ -95,8 +91,11 @@ struct network_simulation {
   // add to transition matrix
   void add_transition(const int energy, const int energy_change);
 
-  // compute density of states from transition matrix
-  void compute_dos_and_weights();
+  // compute density of states and weight array from transition matrix
+  void compute_dos_and_weights_from_transitions();
+
+  // probability of accepting a transition from one energy to another one
+  double acceptance_probability(const vector<bool>& new_state) const;
 
   // -------------------------------------------------------------------------------------
   // Access methods for histograms and matrices
