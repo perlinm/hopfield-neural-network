@@ -41,14 +41,13 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
   for (int ii = 0; ii < nodes; ii++) {
     couplings.at(ii) = vector<int>(nodes, 0);
     for (int jj = 0; jj < nodes; jj++) {
+      if (jj == ii) continue;
       for (int pp = 0; pp < int(patterns.size()); pp++) {
         const int coupling = (2*patterns.at(pp).at(ii)-1)*(2*patterns.at(pp).at(jj)-1);
         couplings.at(ii).at(jj) += coupling;
-        max_energy += abs(coupling);
       }
+      max_energy += abs(couplings.at(ii).at(jj));
     }
-    max_energy -= couplings.at(ii).at(ii);
-    couplings.at(ii).at(ii) = 0;
   }
 
   max_energy_change = 0;
