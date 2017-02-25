@@ -235,12 +235,15 @@ void network_simulation::compute_weights_from_transitions(const double min_temp)
     }
   }
 
+  // above the peak density of states, use flat (infinite temperature) weights
   for (int ee = network.energy_range - 1; ee > max_ln_dos_energy; ee--) {
     ln_weights.at(ee) = -ln_dos.at(max_ln_dos_energy);
   }
+  // in the range of observed energies, set weights appropriately
   for (int ee = max_ln_dos_energy; ee > smallest_seen_energy; ee--) {
     ln_weights.at(ee) = -ln_dos.at(ee);
   }
+  // below all observed energies use weights fixed at the minimum temperature
   for (int ee = smallest_seen_energy; ee >= 0; ee--) {
     ln_weights.at(ee) = (-ln_dos.at(smallest_seen_energy)
                          - abs(smallest_seen_energy - ee) / min_temp);
