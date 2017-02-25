@@ -155,9 +155,9 @@ double network_simulation::transition_matrix(const int final_energy,
 // reset all histograms and the visit log of visited energies
 void network_simulation::reset_histograms() {
   energy_histogram = vector<long int>(network.energy_range);
-  state_histogram = vector<vector<long int>>(network.nodes);
-  for (int ii = 0; ii < network.nodes; ii++) {
-    state_histogram.at(ii) = vector<long int>(network.energy_range);
+  state_histogram = vector<vector<long int>>(network.energy_range);
+  for (int ee = 0; ee < network.energy_range; ee++) {
+    state_histogram.at(ee) = vector<long int>(network.nodes);
   }
 }
 void network_simulation::reset_visit_log() {
@@ -169,7 +169,7 @@ void network_simulation::update_histograms() {
   const int ee = energy(state);
   energy_histogram.at(ee)++;
   for (int ii = 0; ii < network.nodes; ii++) {
-    state_histogram.at(ii).at(ee) += state.at(ii);
+    state_histogram.at(ee).at(ii) += state.at(ii);
   }
 }
 

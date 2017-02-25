@@ -202,7 +202,6 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   } else if (fixed_temp) {
 
-
     cout << "starting a fixed temperature simulation" << endl;
     for (int ee = 0; ee < ns.network.energy_range; ee++) {
       ns.ln_weights.at(ee) = -ee/temp_scale;
@@ -312,5 +311,22 @@ int main(const int arg_num, const char *arg_vec[]) {
       }
     }
   }
+
+
+  cout << endl;
+  for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
+    const int observations = ns.energy_histogram.at(ee);
+    if (observations > 0) {
+      cout << setw(log10(2*ns.network.max_energy)+2)
+           << ee - ns.network.max_energy << " ";
+      for (int ii = 0; ii < ns.network.nodes; ii++) {
+        cout << setw(10)
+             << double(ns.state_histogram.at(ee).at(ii))/observations << " ";
+      }
+      cout << endl;
+    }
+  }
+  cout << endl;
+
 
 }
