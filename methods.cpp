@@ -12,6 +12,15 @@ int gcd(const int a, const int b) {
   else return gcd(b, a % b);
 }
 
+// distance between two states
+int distance(const vector<bool>& s1, const vector<bool>& s2) {
+  int distance = 0;
+  for (int ii = 0, size = s1.size(); ii < size; ii++) {
+    distance += (s1[ii] == s2[ii]);
+  }
+  return distance;
+}
+
 // generate random state
 vector<bool> random_state(const int nodes, uniform_real_distribution<double>& rnd,
                           mt19937_64& generator) {

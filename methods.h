@@ -9,6 +9,9 @@ using namespace std;
 // greatest common divisor
 int gcd(const int a, const int b);
 
+// distance between two states
+int distance(const vector<bool>& s1, const vector<bool>& s2);
+
 // generate random state
 vector<bool> random_state(const int nodes, uniform_real_distribution<double>& rnd,
                           mt19937_64& generator);
