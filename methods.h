@@ -112,7 +112,7 @@ struct network_simulation {
   void add_transition(const int energy, const int energy_change);
 
   // compute density of states and weight array from transition matrix
-  void compute_dos_and_weights_from_transitions(const double min_temp);
+  void compute_dos_and_weights_from_transitions(const double temp_cap);
 
   // compute density of states from the energy histogram
   void compute_dos_from_energy_histogram();

@@ -219,7 +219,7 @@ void network_simulation::add_transition(const int energy, const int energy_chang
 }
 
 // compute density of states and weight array from transition matrix
-void network_simulation::compute_dos_and_weights_from_transitions(const double min_temp) {
+void network_simulation::compute_dos_and_weights_from_transitions(const double temp_cap) {
 
   ln_dos = vector<double>(network.energy_range, 0);
   ln_weights = vector<double>(network.energy_range, 1);
@@ -251,26 +251,54 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double m
 
   }
 
-  int smallest_seen_energy = 0;
-  for (int ee = 0; ee < network.energy_range; ee++) {
-    if (energy_histogram[ee] != 0) {
-      smallest_seen_energy = ee;
-      break;
-    }
-  }
+  if (temp_cap > 0) {
 
-  // above the entropy peak, use flat (infinite temperature) weights
-  for (int ee = network.energy_range - 1; ee > entropy_peak; ee--) {
-    ln_weights[ee] = -ln_dos[entropy_peak];
-  }
-  // in the range of observed energies, set weights appropriately
-  for (int ee = entropy_peak; ee > smallest_seen_energy; ee--) {
-    ln_weights[ee] = -ln_dos[ee];
-  }
-  // below all observed energies use weights fixed at the minimum temperature
-  for (int ee = smallest_seen_energy; ee >= 0; ee--) {
-    ln_weights[ee] = (-ln_dos[smallest_seen_energy]
-                      - abs(smallest_seen_energy - ee) / min_temp);
+    int smallest_seen_energy = 0;
+    for (int ee = 0; ee < network.energy_range; ee++) {
+      if (energy_histogram[ee] != 0) {
+        smallest_seen_energy = ee;
+        break;
+      }
+    }
+
+    // in the relevant range of observed energies, set weights appropriately
+    for (int ee = entropy_peak; ee > smallest_seen_energy; ee--) {
+      ln_weights[ee] = -ln_dos[ee];
+    }
+    // below all observed energies use weights fixed at the temperature cap
+    for (int ee = smallest_seen_energy; ee >= 0; ee--) {
+      ln_weights[ee] = (-ln_dos[smallest_seen_energy]
+                        - abs(smallest_seen_energy - ee) / temp_cap);
+    }
+    // above the entropy peak, use flat (infinite temperature) weights
+    for (int ee = network.energy_range - 1; ee > entropy_peak; ee--) {
+      ln_weights[ee] = -ln_dos[entropy_peak];
+    }
+
+  } else { // if temp_cap < 0
+
+    int largest_seen_energy = network.energy_range;
+    for (int ee = network.energy_range - 1; ee >= 0; ee++) {
+      if (energy_histogram[ee] != 0) {
+        largest_seen_energy = ee;
+        break;
+      }
+    }
+
+    // in the relevant range of observed energies, set weights appropriately
+    for (int ee = entropy_peak; ee < largest_seen_energy; ee++) {
+      ln_weights[ee] = -ln_dos[ee];
+    }
+    // above all observed energies use weights fixed at the temperature cap
+    for (int ee = largest_seen_energy; ee < network.energy_range; ee++) {
+      ln_weights[ee] = (-ln_dos[largest_seen_energy]
+                        - abs(largest_seen_energy - ee) / temp_cap);
+    }
+    // below the entropy peak, use flat (infinite temperature) weights
+    for (int ee = 0; ee < entropy_peak; ee++) {
+      ln_weights[ee] = -ln_dos[entropy_peak];
+    }
+
   }
 
 }
@@ -307,7 +335,7 @@ void network_simulation::print_patterns() const {
 void network_simulation::print_energy_data() const {
   cout << "energy observations ln_dos samples" << endl;
   const int energy_width = log10(2*network.max_energy) + 2;
-  const int histogram_width = log10(energy_histogram[network.max_energy]) + 2;
+  const int histogram_width = log10(energy_histogram[entropy_peak]) + 2;
   for (int ee = network.energy_range - 1; ee >= 0; ee--) {
     const int observations = energy_histogram[ee];
     if (observations != 0) {
