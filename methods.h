@@ -92,12 +92,13 @@ struct network_simulation {
 
   // reset all histograms and the visit log of visited energies
   void reset_histograms();
-  void reset_visit_log();
 
   // update histograms with an observation of the current state
-  void update_histograms();
+  void update_energy_histogram(const int energy);
+  void update_state_histograms(const int energy);
 
   // update sample count
+  void update_samples(const int new_energy, const int old_energy, const int entropy_peak);
   void update_samples(const int new_energy, const int old_energy);
 
   // expectation value of fractional sample error at a given temperature
@@ -110,11 +111,8 @@ struct network_simulation {
   // compute density of states and weight array from transition matrix
   void compute_dos_and_weights_from_transitions(const double min_temp);
 
-  // probability to accept a move into a new state
-  double acceptance_probability(const vector<bool>& new_state) const;
-
   // compute density of states from the energy histogram
-  void compute_dos();
+  void compute_dos_from_energy_histogram();
 
   // -------------------------------------------------------------------------------------
   // Printing methods

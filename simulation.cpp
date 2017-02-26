@@ -213,20 +213,22 @@ int main(const int arg_num, const char *arg_vec[]) {
          << "cycles sample_error" << endl;
     int cycles = 0;
     double sample_error;
+    int update_energy;
+    int old_energy = ns.energy();
     do {
       for (int ii = 0; ii < pow(10,log10_init_cycle); ii++) {
 
         const vector<bool> new_state = random_change(ns.state, rnd(generator));
 
-        const int old_energy = ns.energy();
         const int new_energy = ns.energy(new_state);
         const int energy_change = new_energy - old_energy;
 
         ns.add_transition(old_energy, energy_change);
 
-        if (energy_change < 0) {
-          // if the energy change for the proposed move is negative, always accept it
+        if (energy_change <= 0) {
+          // proposed new state does not have a higher energy, always accept it
           ns.state = new_state;
+          update_energy = new_energy;
 
         } else {
           // otherwise, accept the move with some probability
@@ -238,17 +240,21 @@ int main(const int arg_num, const char *arg_vec[]) {
           const double backward_flux
             = double(ns.transitions(new_energy, -energy_change) + tpff) / (new_norm + tpff);
 
-          const double transition_probability = max(forward_flux/backward_flux,
+          const double acceptance_probability = max(forward_flux/backward_flux,
                                                     exp(-energy_change/temp_scale));
 
-          if (rnd(generator) < transition_probability) {
+          if (rnd(generator) < acceptance_probability) {
             ns.state = new_state;
+            update_energy = new_energy;
+          } else {
+            update_energy = old_energy;
           }
         }
 
-        // update histograms and sample counts
-        ns.update_histograms();
-        ns.update_samples(new_energy, old_energy);
+        ns.update_energy_histogram(update_energy);
+        ns.update_samples(update_energy, old_energy);
+        old_energy = update_energy;
+
       }
 
       ns.compute_dos_and_weights_from_transitions(temp_scale);
@@ -264,10 +270,11 @@ int main(const int arg_num, const char *arg_vec[]) {
            << "energy observations ln_dos samples"
            << endl;
       for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
-        if (ns.energy_histogram.at(ee) != 0) {
+        const int observations = ns.energy_histogram.at(ee);
+        if (observations != 0) {
           cout << setw(log10(2*ns.network.max_energy)+2)
                << ee - ns.network.max_energy << " "
-               << setw(log10_iterations) << ns.energy_histogram.at(ee) << " "
+               << setw(log10_iterations) << observations << " "
                << setw(10) << ns.ln_dos.at(ee) << " "
                << setw(log10_iterations) << ns.samples.at(ee) << " "
                << endl;
@@ -284,32 +291,47 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Run simulation
   // -------------------------------------------------------------------------------------
 
+  int update_energy;
+  int old_energy = ns.energy();
   for (int ii = 0; ii < pow(10,log10_iterations); ii++) {
 
     const vector<bool> new_state = random_change(ns.state, rnd(generator));
-    if (rnd(generator) < ns.acceptance_probability(new_state)) {
-      ns.state = new_state;
-    }
-    ns.update_histograms();
+    const int new_energy = ns.energy(new_state);
 
+    const double acceptance_probability = exp(ns.ln_weights.at(new_energy)
+                                              - ns.ln_weights.at(old_energy));
+
+    if (rnd(generator) < acceptance_probability) {
+      ns.state = new_state;
+      update_energy = new_energy;
+    } else {
+      update_energy = old_energy;
+    }
+
+    ns.update_energy_histogram(update_energy);
+    ns.update_state_histograms(update_energy);
+    ns.update_samples(update_energy, old_energy);
+    old_energy = update_energy;
   }
 
-  ns.compute_dos();
+  ns.compute_dos_from_energy_histogram();
 
   if (debug) {
     cout << endl
-         << "energy observations ln_dos"
+         << "energy observations ln_dos samples"
          << endl;
     for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
       const int observations = ns.energy_histogram.at(ee);
-      if (observations > 0) {
+      if (observations != 0) {
         cout << setw(log10(2*ns.network.max_energy)+2)
              << ee - ns.network.max_energy << " "
              << setw(log10_iterations) << observations << " "
              << setw(10) << ns.ln_dos.at(ee) << " "
+             << setw(log10_iterations) << ns.samples.at(ee) << " "
              << endl;
       }
     }
+    cout << endl;
   }
 
 

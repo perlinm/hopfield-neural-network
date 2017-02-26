@@ -111,7 +111,7 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
     energy_transitions.at(ee) = vector<long int>(2*network.max_energy_change + 1, 0);
   }
 
-  reset_visit_log();
+  visited = vector<bool>(network.energy_range, false);
   samples = vector<int>(network.energy_range, 0);
   ln_weights = vector<double>(network.energy_range, 1);
   ln_dos = vector<double>(network.energy_range, 0);
@@ -160,32 +160,49 @@ void network_simulation::reset_histograms() {
     state_histogram.at(ee) = vector<long int>(network.nodes);
   }
 }
-void network_simulation::reset_visit_log() {
-  visited = vector<bool>(network.energy_range, false);
-}
 
 // update histograms with an observation of the current state
-void network_simulation::update_histograms() {
-  const int ee = energy(state);
-  energy_histogram.at(ee)++;
+void network_simulation::update_energy_histogram(const int energy) {
+  energy_histogram.at(energy)++;
+}
+void network_simulation::update_state_histograms(const int energy) {
   for (int ii = 0; ii < network.nodes; ii++) {
-    state_histogram.at(ee).at(ii) += state.at(ii);
+    state_histogram.at(energy).at(ii) += state.at(ii);
   }
 }
 
 // update sample count
-void network_simulation::update_samples(const int new_energy, const int old_energy) {
-  // we only need to add to the sample count if the new energy is negative
-  if (new_energy < network.max_energy) {
-    // if we have not visited the new energy yet, now we have; add to the sample count
-    if (!visited.at(new_energy)) {
-      visited.at(new_energy) = true;
-      samples.at(new_energy)++;
-    }
-  } else if (old_energy < network.max_energy) {
-    // if the new energy is >= 0 and the old energy was < 0, reset the visit log
-    reset_visit_log();
+void network_simulation::update_samples(const int new_energy, const int old_energy,
+                                        const int entropy_peak) {
+  if (!visited.at(new_energy)) {
+    visited.at(new_energy) = true;
+    samples.at(new_energy)++;
   }
+
+  if (old_energy == entropy_peak) return;
+  if (new_energy == entropy_peak) {
+    visited = vector<bool>(network.energy_range, false);
+    return;
+  }
+
+  const bool above_peak_now = (new_energy > entropy_peak);
+  const bool above_peak_before = (old_energy > entropy_peak);
+  if (above_peak_now == above_peak_before) return;
+
+  if (above_peak_now) {
+    // reset visit log at low energies
+    for (int ee = 0; ee < entropy_peak; ee++) {
+      visited.at(ee) = false;
+    }
+  } else {
+    // reset visit log at high energies
+    for (int ee = entropy_peak + 1; ee < network.energy_range; ee++) {
+      visited.at(ee) = false;
+    }
+  }
+}
+void network_simulation::update_samples(const int new_energy, const int old_energy) {
+  return update_samples(new_energy, old_energy, network.max_energy);
 }
 
 // expectation value of fractional sample error at a given temperature
@@ -266,13 +283,8 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double m
 
 }
 
-// probability to accept a move into a new state
-double network_simulation::acceptance_probability(const vector<bool>& new_state) const {
-  return exp(ln_weights.at(energy(new_state)) - ln_weights.at(energy()));
-}
-
 // compute density of states from the energy histogram
-void network_simulation::compute_dos() {
+void network_simulation::compute_dos_from_energy_histogram() {
   ln_dos = vector<double>(network.energy_range);
 
   double max_ln_dos = 0;
