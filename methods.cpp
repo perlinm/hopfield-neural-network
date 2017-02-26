@@ -103,6 +103,7 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
   patterns(patterns),
   network(hopfield_network(patterns))
 {
+  entropy_peak = network.max_energy;
   state = initial_state;
   initialize_histograms();
   visited = vector<bool>(network.energy_range, false);
@@ -167,9 +168,20 @@ void network_simulation::update_state_histograms(const int energy) {
   }
 }
 
+// identify the energy at which entropy is maximized
+void network_simulation::find_entropy_peak() {
+  int most_observations = 0;
+  for (int ee = 0; ee < network.energy_range; ee++) {
+    const int observations = energy_histogram[ee];
+    if (observations > most_observations) {
+      most_observations = observations;
+      entropy_peak = ee;
+    }
+  }
+}
+
 // update sample count
-void network_simulation::update_samples(const int new_energy, const int old_energy,
-                                        const int entropy_peak) {
+void network_simulation::update_samples(const int new_energy, const int old_energy) {
   if (!visited[new_energy]) {
     visited[new_energy] = true;
     samples[new_energy]++;
@@ -196,9 +208,6 @@ void network_simulation::update_samples(const int new_energy, const int old_ener
       visited[ee] = false;
     }
   }
-}
-void network_simulation::update_samples(const int new_energy, const int old_energy) {
-  return update_samples(new_energy, old_energy, network.max_energy);
 }
 
 // expectation value of fractional sample error at a given temperature

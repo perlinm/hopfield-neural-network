@@ -197,9 +197,6 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Initialize weight array
   // -------------------------------------------------------------------------------------
 
-  // energy at which entropy is maximal
-  int entropy_peak = ns.network.max_energy;
-
   // initialize weight array
   if (inf_temp) {
 
@@ -258,20 +255,11 @@ int main(const int arg_num, const char *arg_vec[]) {
         }
 
         ns.update_energy_histogram(update_energy);
-        ns.update_samples(update_energy, old_energy, entropy_peak);
+        ns.update_samples(update_energy, old_energy);
         old_energy = update_energy;
       }
 
-      // check energy histogram to make sure our entropy peak is correct
-      int most_observations = 0;
-      for (int ee = 0; ee < ns.network.max_energy; ee++) {
-        const int observations = ns.energy_histogram[ee];
-        if (observations > most_observations) {
-          most_observations = observations;
-          entropy_peak = ee;
-        }
-      }
-
+      ns.find_entropy_peak();
       ns.compute_dos_and_weights_from_transitions(temp_scale);
 
       cycles++;
@@ -314,7 +302,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     ns.add_transition(old_energy, new_energy - old_energy);
     ns.update_energy_histogram(update_energy);
     ns.update_state_histograms(update_energy);
-    ns.update_samples(update_energy, old_energy, entropy_peak);
+    ns.update_samples(update_energy, old_energy);
     old_energy = update_energy;
   }
 

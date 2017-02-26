@@ -43,6 +43,9 @@ struct network_simulation {
   const vector<vector<bool>> patterns;
   const hopfield_network network;
 
+  // energy at which entropy is maximized
+  int entropy_peak;
+
   vector<bool> state;
   vector<long int> energy_histogram;
   vector<vector<long int>> state_histograms;
@@ -98,8 +101,10 @@ struct network_simulation {
   void update_energy_histogram(const int energy);
   void update_state_histograms(const int energy);
 
+  // identify the energy at which entropy is maximized
+  void find_entropy_peak();
+
   // update sample count
-  void update_samples(const int new_energy, const int old_energy, const int entropy_peak);
   void update_samples(const int new_energy, const int old_energy);
 
   // expectation value of fractional sample error at a given temperature
