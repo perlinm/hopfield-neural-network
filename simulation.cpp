@@ -177,7 +177,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   network_simulation ns(patterns, random_state(nodes, rnd, generator));
 
-  // make simulation hash
+  // make hash for initialization parameters
   const int hash = [&]() -> int {
     size_t running_hash = 0;
     for (int pp = 0, size = patterns.size(); pp < size; pp++) {
@@ -185,9 +185,6 @@ int main(const int arg_num, const char *arg_vec[]) {
         bo::hash_combine(running_hash, size_t(patterns[pp][nn]));
       }
     }
-    bo::hash_combine(running_hash, size_t(all_temps));
-    bo::hash_combine(running_hash, size_t(fixed_temp));
-    bo::hash_combine(running_hash, size_t(inf_temp));
     bo::hash_combine(running_hash, size_t(temp_scale));
     return running_hash;
   }();
