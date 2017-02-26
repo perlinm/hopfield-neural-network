@@ -114,8 +114,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Process and run sanity checks on inputs
   // -------------------------------------------------------------------------------------
 
-  // we should have a positive number of nodes and patterns
-  assert(nodes > 0);
+  // we should have at least two nodes, and at least one pattern
+  assert(nodes > 1);
   assert(pattern_number > 0);
 
   // we can specify either nodes, or a pattern file; not both
@@ -196,12 +196,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   temp_scale *= double(nodes)/ns.network.energy_scale;
 
   cout << endl
-       << "maximum energy: " << ns.network.max_energy
-       << " (of " << pattern_number * nodes * (nodes - 1) / ns.network.energy_scale
-       << " possible)" << endl
-       << "maximum energy change: " << ns.network.max_energy_change
-       << " (of " << 2 * pattern_number * (nodes - 1) / ns.network.energy_scale
-       << " possible)" << endl
+       << "maximum energy: " << ns.network.max_energy << endl
+       << "maximum energy change: " << ns.network.max_energy_change << endl
        << "energy scale: " << ns.network.energy_scale << endl
        << endl;
 
