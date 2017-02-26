@@ -57,18 +57,17 @@ int main(const int arg_num, const char *arg_vec[]) {
   po::options_description simulation_options("General simulation options",
                                              help_text_length);
   simulation_options.add_options()
-    ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
-     "log10 of the number of iterations to simulate")
-    ("all_temps", po::value<bool>(&all_temps)->default_value(true)->implicit_value(true),
+    ("all_temps", po::value<bool>(&all_temps)->default_value(false)->implicit_value(true),
      "run an all-temperature simulation")
-    ("inf_temp", po::value<bool>(&inf_temp)->default_value(false)->implicit_value(true),
-     "run an infinite temperature simulation")
     ("fixed_temp",
      po::value<bool>(&fixed_temp)->default_value(false)->implicit_value(true),
      "run a fixed-temperature simulation")
+    ("inf_temp", po::value<bool>(&inf_temp)->default_value(false)->implicit_value(true),
+     "run an infinite temperature simulation")
     ("temp_scale", po::value<double>(&temp_scale)->default_value(0.1,"0.1"),
      "temperature scale of interest in simulation")
-
+    ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
+     "log10 of the number of iterations to simulate")
     ;
 
   int log10_init_cycle;
@@ -82,7 +81,7 @@ int main(const int arg_num, const char *arg_vec[]) {
      "log10 of the number of iterations in one initialization cycle")
     ("sample_error", po::value<double>(&target_sample_error)->default_value(0.01,"0.01"),
      "the transition matrix initialization routine terminates when it achieves"
-     " this expected fractional sample error at given minimum temperature")
+     " this expected fractional sample error at a temperature temp_scale")
     ("transition_factor", po::value<int>(&tpff)->default_value(1),
      "fudge factor in computation of move acceptance probability"
      " during transition matrix initialization")
@@ -108,6 +107,9 @@ int main(const int arg_num, const char *arg_vec[]) {
   // by default, use the same number of patterns as nodes
   if (pattern_number == 0) pattern_number = nodes;
 
+  // default to an all-temperature simulation
+  if (!all_temps && !fixed_temp && !inf_temp) all_temps = true;
+
   // -------------------------------------------------------------------------------------
   // Process and run sanity checks on inputs
   // -------------------------------------------------------------------------------------
@@ -119,8 +121,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   // we can specify either nodes, or a pattern file; not both
   assert(nodes || !pattern_file.empty());
 
-  // we must choose some temperature option
-  assert(inf_temp || fixed_temp || all_temps);
+  // we can only have one temperature option
+  assert(all_temps + fixed_temp + inf_temp == 1);
 
   // the temperature scale cannot be zero
   assert(temp_scale != 0);
