@@ -117,8 +117,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   // we must choose some temperature option
   assert(inf_temp || fixed_temp || all_temps);
 
-  // the temperature scale cannot be zero
-  assert(temp_scale != 0);
+  // the temperature scale cannot be zero (negative temperatures not yet supported)
+  assert(temp_scale > 0);
 
   // if we specified a pattern file, make sure it exists
   assert(pattern_file.empty() || fs::exists(pattern_file));
