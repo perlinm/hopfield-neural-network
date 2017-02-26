@@ -213,7 +213,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   } else if (all_temps) {
 
     cout << "initializing transition matrix for an all-temperature simulation..." << endl
-         << "cycles sample_error" << endl;
+         << "sample_error cycle_number" << endl;
     int cycles = 0;
     double sample_error;
     int update_energy;
@@ -263,7 +263,8 @@ int main(const int arg_num, const char *arg_vec[]) {
 
       cycles++;
       sample_error = ns.fractional_sample_error(temp_scale);
-      cout << cycles << " " << sample_error << endl;
+      cout << fixed << setprecision(ceil(-log10(target_sample_error)) + 2)
+           << sample_error << " " << cycles << endl;
 
     } while (sample_error > target_sample_error);
     cout << endl;
@@ -307,26 +308,13 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   ns.compute_dos_from_energy_histogram();
 
-  cout << "simulation complete" << endl << endl;
-
   if (debug) {
     ns.print_energy_data();
     cout << endl;
+    ns.print_expected_states();
+    cout << endl;
   }
 
-  for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
-    const int observations = ns.energy_histogram[ee];
-    if (observations > 0) {
-      cout << setw(log10(2*ns.network.max_energy)+2)
-           << ee - ns.network.max_energy << " ";
-      for (int ii = 0; ii < ns.network.nodes; ii++) {
-        cout << setw(10)
-             << double(ns.state_histograms[ee][ii])/observations << " ";
-      }
-      cout << endl;
-    }
-  }
-  cout << endl;
-
+  cout << "simulation complete" << endl << endl;
 
 }

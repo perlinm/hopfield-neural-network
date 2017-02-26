@@ -126,4 +126,8 @@ struct network_simulation {
 
   // print energy histogram, density of states, and energy samples
   void print_energy_data() const;
+
+  // print expectation values of spins at each energy
+  void print_expected_states() const;
+
 };

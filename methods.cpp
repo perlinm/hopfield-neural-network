@@ -333,17 +333,34 @@ void network_simulation::print_patterns() const {
 
 // print energy histogram, density of states, and energy samples
 void network_simulation::print_energy_data() const {
-  cout << "energy observations ln_dos samples" << endl;
+  cout << "energy observations samples ln_dos" << endl;
   const int energy_width = log10(2*network.max_energy) + 2;
   const int histogram_width = log10(energy_histogram[entropy_peak]) + 2;
   for (int ee = network.energy_range - 1; ee >= 0; ee--) {
     const int observations = energy_histogram[ee];
     if (observations != 0) {
-      cout << setw(energy_width) << ee - network.max_energy << " "
+      cout << fixed
+           << setw(energy_width) << ee - network.max_energy << " "
            << setw(histogram_width) << observations << " "
-           << setw(10) << ln_dos[ee] << " "
            << setw(histogram_width) << samples[ee] << " "
+           << setw(10) << setprecision(7) << ln_dos[ee] << " "
            << endl;
+    }
+  }
+}
+
+// print expectation values of spins at each energy
+void network_simulation::print_expected_states() const {
+  cout << setprecision(7);
+  for (int ee = network.energy_range - 1; ee >= 0; ee--) {
+    const int observations = energy_histogram[ee];
+    if (observations > 0) {
+      cout << setw(log10(2*network.max_energy) + 2)
+           << ee - network.max_energy << " ";
+      for (int ii = 0; ii < network.nodes; ii++) {
+        cout << setw(10) << 2*double(state_histograms[ee][ii])/observations - 1 << " ";
+      }
+      cout << endl;
     }
   }
 }
