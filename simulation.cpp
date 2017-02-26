@@ -64,7 +64,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     ("fixed_temp",
      po::value<bool>(&fixed_temp)->default_value(false)->implicit_value(true),
      "run a fixed-temperature simulation")
-    ("temp_scale", po::value<double>(&temp_scale)->default_value(0.1),
+    ("temp_scale", po::value<double>(&temp_scale)->default_value(0.1,"0.1"),
      "temperature scale of interest in simulation")
 
     ;
@@ -174,7 +174,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   network_simulation ns(patterns, random_state(nodes, rnd, generator));
 
   // adjust temperature scale to be compatible with the energy units used in simulation
-  temp_scale *= nodes/ns.network.energy_scale;
+  temp_scale *= double(nodes)/ns.network.energy_scale;
 
   cout << endl
        << "maximum energy: " << ns.network.max_energy
@@ -196,6 +196,9 @@ int main(const int arg_num, const char *arg_vec[]) {
   // -------------------------------------------------------------------------------------
   // Initialize weight array
   // -------------------------------------------------------------------------------------
+
+  // energy at which entropy is maximal
+  int entropy_peak = ns.network.max_energy;
 
   // initialize weight array
   if (inf_temp) {
@@ -255,8 +258,18 @@ int main(const int arg_num, const char *arg_vec[]) {
         }
 
         ns.update_energy_histogram(update_energy);
-        ns.update_samples(update_energy, old_energy);
+        ns.update_samples(update_energy, old_energy, entropy_peak);
         old_energy = update_energy;
+      }
+
+      // check energy histogram to make sure our entropy peak is correct
+      int most_observations = 0;
+      for (int ee = 0; ee < ns.network.max_energy; ee++) {
+        const int observations = ns.energy_histogram[ee];
+        if (observations > most_observations) {
+          most_observations = observations;
+          entropy_peak = ee;
+        }
       }
 
       ns.compute_dos_and_weights_from_transitions(temp_scale);
@@ -301,7 +314,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     ns.add_transition(old_energy, new_energy - old_energy);
     ns.update_energy_histogram(update_energy);
     ns.update_state_histograms(update_energy);
-    ns.update_samples(update_energy, old_energy);
+    ns.update_samples(update_energy, old_energy, entropy_peak);
     old_energy = update_energy;
   }
 
