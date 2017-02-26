@@ -17,7 +17,7 @@ vector<bool> random_state(const int nodes, uniform_real_distribution<double>& rn
                           mt19937_64& generator) {
   vector<bool> state(nodes);
   for (int ii = 0; ii < nodes; ii++) {
-    state.at(ii) = (rnd(generator) < 0.5);
+    state[ii] = (rnd(generator) < 0.5);
   }
   return state;
 }
@@ -26,27 +26,27 @@ vector<bool> random_state(const int nodes, uniform_real_distribution<double>& rn
 vector<bool> random_change(const vector<bool>& state, const double random) {
   const int node = floor(random*state.size());
   vector<bool> new_state = state;
-  new_state.at(node) = !new_state.at(node);
+  new_state[node] = !new_state[node];
   return new_state;
 }
 
 // hopfield network constructor
 hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
-  nodes = patterns.at(0).size();
+  nodes = patterns[0].size();
 
   // generate interaction matrix from patterns
-  // note: these couplings are a factor of [nodes] greater than the regular definition
+  // note: these couplings are a factor of (nodes) greater than the regular definition
   couplings = vector<vector<int>>(nodes);
   max_energy = 0;
   for (int ii = 0; ii < nodes; ii++) {
-    couplings.at(ii) = vector<int>(nodes, 0);
+    couplings[ii] = vector<int>(nodes, 0);
     for (int jj = 0; jj < nodes; jj++) {
       if (jj == ii) continue;
       for (int pp = 0; pp < int(patterns.size()); pp++) {
-        const int coupling = (2*patterns.at(pp).at(ii)-1)*(2*patterns.at(pp).at(jj)-1);
-        couplings.at(ii).at(jj) += coupling;
+        const int coupling = (2*patterns[pp][ii]-1)*(2*patterns[pp][jj]-1);
+        couplings[ii][jj] += coupling;
       }
-      max_energy += abs(couplings.at(ii).at(jj));
+      max_energy += abs(couplings[ii][jj]);
     }
   }
 
@@ -55,7 +55,7 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
   for (int ii = 0; ii < nodes; ii++) {
     int node_energy = 0;
     for (int jj = 0; jj < nodes; jj++) {
-      node_energy += abs(couplings.at(ii).at(jj));
+      node_energy += abs(couplings[ii][jj]);
     }
     max_energy_change = max(2*node_energy, max_energy_change);
     energy_scale = gcd(node_energy, energy_scale);
@@ -68,12 +68,12 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
 
 // energy of the network in a given state
 // note: this energy is shifted up by the maximum energy, and is an additional
-//       factor of [nodes/energy_scale] greater than the regular definition
+//       factor of (nodes/energy_scale) greater than the regular definition
 int hopfield_network::energy(const vector<bool>& state) const {
   int sum = 0;
   for (int ii = 0; ii < nodes; ii++) {
-    for (int jj = ii+1; jj < nodes; jj++) {
-      sum += couplings.at(ii).at(jj) * (2*state.at(ii)-1) * (2*state.at(jj)-1);
+    for (int jj = ii + 1; jj < nodes; jj++) {
+      sum += couplings[ii][jj] * (2*state[ii]-1) * (2*state[jj]-1);
     }
   }
   return -sum/energy_scale + max_energy;
@@ -84,14 +84,14 @@ void hopfield_network::print_couplings() const {
   int largest_coupling = 0;
   for (int ii = 0; ii < nodes; ii++) {
     for (int jj = 0; jj < nodes; jj++) {
-      largest_coupling = max(abs(couplings.at(ii).at(jj)), largest_coupling);
+      largest_coupling = max(abs(couplings[ii][jj]), largest_coupling);
     }
   }
 
   const int width = log10(largest_coupling) + 2;
   for (int ii = 0; ii < nodes; ii++) {
     for (int jj = 0; jj < nodes; jj++) {
-      cout << setw(width) << couplings.at(ii).at(jj) << " ";
+      cout << setw(width) << couplings[ii][jj] << " ";
     }
     cout << endl;
   }
@@ -116,7 +116,7 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
 
 // number of transitions from a given energy with a specified energy change
 int network_simulation::transitions(const int energy, const int energy_change) const {
-  return energy_transitions.at(energy).at(energy_change + network.max_energy_change);
+  return energy_transitions[energy][energy_change + network.max_energy_change];
 }
 
 // number of transitions from a given energy to any other energy
@@ -152,27 +152,27 @@ void network_simulation::initialize_histograms() {
   state_histograms = vector<vector<long int>>(network.energy_range);
   energy_transitions = vector<vector<long int>>(network.energy_range);
   for (int ee = 0; ee < network.energy_range; ee++) {
-    state_histograms.at(ee) = vector<long int>(network.nodes);
-    energy_transitions.at(ee) = vector<long int>(2*network.max_energy_change + 1, 0);
+    state_histograms[ee] = vector<long int>(network.nodes, 0);
+    energy_transitions[ee] = vector<long int>(2*network.max_energy_change + 1, 0);
   }
 }
 
 // update histograms with an observation of a given energy
 void network_simulation::update_energy_histogram(const int energy) {
-  energy_histogram.at(energy)++;
+  energy_histogram[energy]++;
 }
 void network_simulation::update_state_histograms(const int energy) {
   for (int ii = 0; ii < network.nodes; ii++) {
-    state_histograms.at(energy).at(ii) += state.at(ii);
+    state_histograms[energy][ii] += state[ii];
   }
 }
 
 // update sample count
 void network_simulation::update_samples(const int new_energy, const int old_energy,
                                         const int entropy_peak) {
-  if (!visited.at(new_energy)) {
-    visited.at(new_energy) = true;
-    samples.at(new_energy)++;
+  if (!visited[new_energy]) {
+    visited[new_energy] = true;
+    samples[new_energy]++;
   }
 
   if (old_energy == entropy_peak) return;
@@ -188,12 +188,12 @@ void network_simulation::update_samples(const int new_energy, const int old_ener
   if (above_peak_now) {
     // reset visit log at low energies
     for (int ee = 0; ee < entropy_peak; ee++) {
-      visited.at(ee) = false;
+      visited[ee] = false;
     }
   } else {
     // reset visit log at high energies
     for (int ee = entropy_peak + 1; ee < network.energy_range; ee++) {
-      visited.at(ee) = false;
+      visited[ee] = false;
     }
   }
 }
@@ -207,9 +207,9 @@ double network_simulation::fractional_sample_error(const double temp) const {
   double error = 0;
   double normalization = 0;
   for (int ee = 0; ee < network.energy_range; ee++) {
-    if (samples.at(ee) != 0) {
-      const double boltzmann_factor = exp(ln_dos.at(ee) - ee/temp);
-      error += boltzmann_factor/sqrt(samples.at(ee));
+    if (samples[ee] != 0) {
+      const double boltzmann_factor = exp(ln_dos[ee] - ee/temp);
+      error += boltzmann_factor/sqrt(samples[ee]);
       normalization += boltzmann_factor;
     }
   }
@@ -218,7 +218,7 @@ double network_simulation::fractional_sample_error(const double temp) const {
 
 // add to transition matrix
 void network_simulation::add_transition(const int energy, const int energy_change) {
-  energy_transitions.at(energy).at(energy_change + network.max_energy_change)++;
+  energy_transitions[energy][energy_change + network.max_energy_change]++;
 }
 
 // compute density of states and weight array from transition matrix
@@ -233,23 +233,23 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double m
   // sweep across energies to construct the density of states
   for (int ee = 1; ee < network.energy_range; ee++) {
 
-    ln_dos.at(ee) = ln_dos.at(ee - 1);
+    ln_dos[ee] = ln_dos[ee-1];
 
-    if (energy_histogram.at(ee) == 0) continue;
+    if (energy_histogram[ee] == 0) continue;
 
     double flux_up_to_this_energy = 0;
     double flux_down_from_this_energy = 0;
     for (int smaller_ee = 0; smaller_ee < ee; smaller_ee++) {
-      flux_up_to_this_energy += (exp(ln_dos.at(smaller_ee) - ln_dos.at(ee))
+      flux_up_to_this_energy += (exp(ln_dos[smaller_ee] - ln_dos[ee])
                          * transition_matrix(ee, smaller_ee));
       flux_down_from_this_energy += transition_matrix(smaller_ee, ee);
     }
     if (flux_up_to_this_energy > 0 && flux_down_from_this_energy > 0) {
-      ln_dos.at(ee) += log(flux_up_to_this_energy/flux_down_from_this_energy);
+      ln_dos[ee] += log(flux_up_to_this_energy/flux_down_from_this_energy);
     }
 
-    if (ln_dos.at(ee) > max_ln_dos) {
-      max_ln_dos = ln_dos.at(ee);
+    if (ln_dos[ee] > max_ln_dos) {
+      max_ln_dos = ln_dos[ee];
       max_ln_dos_energy = ee;
     }
 
@@ -257,7 +257,7 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double m
 
   int smallest_seen_energy = 0;
   for (int ee = 0; ee < network.energy_range; ee++) {
-    if (energy_histogram.at(ee) != 0) {
+    if (energy_histogram[ee] != 0) {
       smallest_seen_energy = ee;
       break;
     }
@@ -265,15 +265,15 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double m
 
   // above the peak density of states, use flat (infinite temperature) weights
   for (int ee = network.energy_range - 1; ee > max_ln_dos_energy; ee--) {
-    ln_weights.at(ee) = -ln_dos.at(max_ln_dos_energy);
+    ln_weights[ee] = -ln_dos[max_ln_dos_energy];
   }
   // in the range of observed energies, set weights appropriately
   for (int ee = max_ln_dos_energy; ee > smallest_seen_energy; ee--) {
-    ln_weights.at(ee) = -ln_dos.at(ee);
+    ln_weights[ee] = -ln_dos[ee];
   }
   // below all observed energies use weights fixed at the minimum temperature
   for (int ee = smallest_seen_energy; ee >= 0; ee--) {
-    ln_weights.at(ee) = (-ln_dos.at(smallest_seen_energy)
+    ln_weights[ee] = (-ln_dos[smallest_seen_energy]
                          - abs(smallest_seen_energy - ee) / min_temp);
   }
 
@@ -285,11 +285,11 @@ void network_simulation::compute_dos_from_energy_histogram() {
 
   double max_ln_dos = 0;
   for (int ee = 0; ee < network.energy_range; ee++) {
-    ln_dos.at(ee) = log(energy_histogram.at(ee)) - ln_weights.at(ee);
-    max_ln_dos = max(ln_dos.at(ee), max_ln_dos);
+    ln_dos[ee] = log(energy_histogram[ee]) - ln_weights[ee];
+    max_ln_dos = max(ln_dos[ee], max_ln_dos);
   }
   for (int ee = 0; ee < network.energy_range; ee++) {
-    ln_dos.at(ee) -= max_ln_dos;
+    ln_dos[ee] -= max_ln_dos;
   }
 };
 
@@ -301,16 +301,25 @@ void network_simulation::compute_dos_from_energy_histogram() {
 void network_simulation::print_patterns() const {
   for (int ii = 0; ii < int(patterns.size()); ii++) {
     for (int jj = 0; jj < network.nodes; jj++) {
-      cout << patterns.at(ii).at(jj) << " ";
+      cout << patterns[ii][jj] << " ";
     }
     cout << endl;
   }
 }
 
-// print a given network state
-void network_simulation::print_state(const vector<bool>& state) const {
-  for (int ii = 0; ii < int(state.size()); ii++) {
-    cout << state.at(ii) << " ";
+// print energy histogram, density of states, and energy samples
+void network_simulation::print_energy_data() const {
+  cout << "energy observations ln_dos samples" << endl;
+  const int energy_width = log10(2*network.max_energy) + 2;
+  const int histogram_width = log10(energy_histogram[network.max_energy]) + 2;
+  for (int ee = network.energy_range - 1; ee >= 0; ee--) {
+    const int observations = energy_histogram[ee];
+    if (observations != 0) {
+      cout << setw(energy_width) << ee - network.max_energy << " "
+           << setw(histogram_width) << observations << " "
+           << setw(10) << ln_dos[ee] << " "
+           << setw(histogram_width) << samples[ee] << " "
+           << endl;
+    }
   }
-  cout << endl;
 }

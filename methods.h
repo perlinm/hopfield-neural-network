@@ -30,7 +30,7 @@ struct hopfield_network {
 
   // energy of the network in a given state
   // note: this energy is shifted up by the maximum energy, and is an additional
-  //       factor of [nodes/energy_scale] greater than the regular definition
+  //       factor of (nodes/energy_scale) greater than the regular definition
   int energy(const vector<bool>& state) const;
 
   void print_couplings() const;
@@ -122,8 +122,6 @@ struct network_simulation {
   // print simulation patterns  // print network patterns or state
   void print_patterns() const;
 
-  // print a given network state
-  void print_state(const vector<bool>& state) const;
-  void print_state() const { return print_state(state); };
-
+  // print energy histogram, density of states, and energy samples
+  void print_energy_data() const;
 };

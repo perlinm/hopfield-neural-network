@@ -147,8 +147,8 @@ int main(const int arg_num, const char *arg_vec[]) {
     while (getline(input,line)) {
       vector<bool> pattern = {};
       for (int ii = 0; ii < int(line.length()); ii++) {
-        if (line.at(ii) == '1') pattern.push_back(true);
-        if (line.at(ii) == '0') pattern.push_back(false);
+        if (line[ii] == '1') pattern.push_back(true);
+        if (line[ii] == '0') pattern.push_back(false);
       }
       patterns.push_back(pattern);
     }
@@ -162,14 +162,14 @@ int main(const int arg_num, const char *arg_vec[]) {
   }
 
   for (int ii = 1; ii < int(patterns.size()); ii++) {
-    if (patterns.at(ii-1).size() != patterns.at(ii).size()){
+    if (patterns[ii-1].size() != patterns[ii].size()){
       cout << "patterns " << ii-1 << " and " << ii
            << " do not have the same size!" << endl;
       return -1;
     }
   }
   pattern_number = patterns.size();
-  nodes = patterns.at(0).size();
+  nodes = patterns[0].size();
 
   network_simulation ns(patterns, random_state(nodes, rnd, generator));
 
@@ -207,7 +207,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
     cout << "starting a fixed temperature simulation" << endl;
     for (int ee = 0; ee < ns.network.energy_range; ee++) {
-      ns.ln_weights.at(ee) = -ee/temp_scale;
+      ns.ln_weights[ee] = -ee/temp_scale;
     }
 
   } else if (all_temps) {
@@ -266,27 +266,15 @@ int main(const int arg_num, const char *arg_vec[]) {
       cout << cycles << " " << sample_error << endl;
 
     } while (sample_error > target_sample_error);
+    cout << endl;
 
     if (debug) {
-      cout << endl
-           << "energy observations ln_dos samples"
-           << endl;
-      for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
-        const int observations = ns.energy_histogram.at(ee);
-        if (observations != 0) {
-          cout << setw(log10(2*ns.network.max_energy)+2)
-               << ee - ns.network.max_energy << " "
-               << setw(log10_iterations) << observations << " "
-               << setw(10) << ns.ln_dos.at(ee) << " "
-               << setw(log10_iterations) << ns.samples.at(ee) << " "
-               << endl;
-        }
-      }
+      ns.print_energy_data();
       cout << endl;
     }
 
     ns.initialize_histograms();
-    cout << "starting an all-temperature simulation" << endl;
+    cout << "starting an all-temperature simulation" << endl << endl;
   }
 
   // -------------------------------------------------------------------------------------
@@ -300,8 +288,8 @@ int main(const int arg_num, const char *arg_vec[]) {
     const vector<bool> new_state = random_change(ns.state, rnd(generator));
     const int new_energy = ns.energy(new_state);
 
-    const double acceptance_probability = exp(ns.ln_weights.at(new_energy)
-                                              - ns.ln_weights.at(old_energy));
+    const double acceptance_probability = exp(ns.ln_weights[new_energy]
+                                              - ns.ln_weights[old_energy]);
 
     if (rnd(generator) < acceptance_probability) {
       ns.state = new_state;
@@ -319,34 +307,21 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   ns.compute_dos_from_energy_histogram();
 
+  cout << "simulation complete" << endl << endl;
+
   if (debug) {
-    cout << endl
-         << "energy observations ln_dos samples"
-         << endl;
-    for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
-      const int observations = ns.energy_histogram.at(ee);
-      if (observations != 0) {
-        cout << setw(log10(2*ns.network.max_energy)+2)
-             << ee - ns.network.max_energy << " "
-             << setw(log10_iterations) << observations << " "
-             << setw(10) << ns.ln_dos.at(ee) << " "
-             << setw(log10_iterations) << ns.samples.at(ee) << " "
-             << endl;
-      }
-    }
+    ns.print_energy_data();
     cout << endl;
   }
 
-
-  cout << endl;
   for (int ee = ns.network.energy_range - 1; ee >= 0; ee--) {
-    const int observations = ns.energy_histogram.at(ee);
+    const int observations = ns.energy_histogram[ee];
     if (observations > 0) {
       cout << setw(log10(2*ns.network.max_energy)+2)
            << ee - ns.network.max_energy << " ";
       for (int ii = 0; ii < ns.network.nodes; ii++) {
         cout << setw(10)
-             << double(ns.state_histograms.at(ee).at(ii))/observations << " ";
+             << double(ns.state_histograms[ee][ii])/observations << " ";
       }
       cout << endl;
     }
