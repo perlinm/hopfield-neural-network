@@ -150,7 +150,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
     while (getline(input,line)) {
       vector<bool> pattern = {};
-      for (int ii = 0; ii < int(line.length()); ii++) {
+      for (int ii = 0, size = line.length(); ii < size; ii++) {
         if (line[ii] == '1') pattern.push_back(true);
         if (line[ii] == '0') pattern.push_back(false);
       }
@@ -165,7 +165,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   }
 
-  for (int ii = 1; ii < int(patterns.size()); ii++) {
+  for (int ii = 1, size = patterns.size(); ii < size; ii++) {
     if (patterns[ii-1].size() != patterns[ii].size()){
       cout << "patterns " << ii-1 << " and " << ii
            << " do not have the same size!" << endl;

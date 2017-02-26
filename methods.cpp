@@ -51,7 +51,7 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
     couplings[ii] = vector<int>(nodes, 0);
     for (int jj = 0; jj < nodes; jj++) {
       if (jj == ii) continue;
-      for (int pp = 0; pp < int(patterns.size()); pp++) {
+      for (int pp = 0, size = patterns.size(); pp < size; pp++) {
         const int coupling = (2*patterns[pp][ii]-1)*(2*patterns[pp][jj]-1);
         couplings[ii][jj] += coupling;
       }
@@ -332,7 +332,7 @@ void network_simulation::compute_dos_from_energy_histogram() {
 
 // print simulation patterns
 void network_simulation::print_patterns() const {
-  for (int ii = 0; ii < int(patterns.size()); ii++) {
+  for (int ii = 0, size = patterns.size(); ii < size; ii++) {
     for (int jj = 0; jj < network.nodes; jj++) {
       cout << patterns[ii][jj] << " ";
     }
