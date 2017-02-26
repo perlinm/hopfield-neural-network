@@ -101,9 +101,6 @@ struct network_simulation {
   void update_energy_histogram(const int energy);
   void update_state_histograms(const int energy);
 
-  // identify the energy at which entropy is maximized
-  void find_entropy_peak();
-
   // update sample count
   void update_samples(const int new_energy, const int old_energy);
 

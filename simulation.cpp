@@ -259,7 +259,6 @@ int main(const int arg_num, const char *arg_vec[]) {
         old_energy = update_energy;
       }
 
-      ns.find_entropy_peak();
       ns.compute_dos_and_weights_from_transitions(temp_scale);
 
       cycles++;

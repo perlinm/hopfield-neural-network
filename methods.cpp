@@ -168,18 +168,6 @@ void network_simulation::update_state_histograms(const int energy) {
   }
 }
 
-// identify the energy at which entropy is maximized
-void network_simulation::find_entropy_peak() {
-  int most_observations = 0;
-  for (int ee = 0; ee < network.energy_range; ee++) {
-    const int observations = energy_histogram[ee];
-    if (observations > most_observations) {
-      most_observations = observations;
-      entropy_peak = ee;
-    }
-  }
-}
-
 // update sample count
 void network_simulation::update_samples(const int new_energy, const int old_energy) {
   if (!visited[new_energy]) {
@@ -237,7 +225,6 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double m
   ln_weights = vector<double>(network.energy_range, 1);
 
   double max_ln_dos = 0;
-  int max_ln_dos_energy = 0;
 
   // sweep across energies to construct the density of states
   for (int ee = 1; ee < network.energy_range; ee++) {
@@ -250,7 +237,7 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double m
     double flux_down_from_this_energy = 0;
     for (int smaller_ee = 0; smaller_ee < ee; smaller_ee++) {
       flux_up_to_this_energy += (exp(ln_dos[smaller_ee] - ln_dos[ee])
-                         * transition_matrix(ee, smaller_ee));
+                                 * transition_matrix(ee, smaller_ee));
       flux_down_from_this_energy += transition_matrix(smaller_ee, ee);
     }
     if (flux_up_to_this_energy > 0 && flux_down_from_this_energy > 0) {
@@ -259,7 +246,7 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double m
 
     if (ln_dos[ee] > max_ln_dos) {
       max_ln_dos = ln_dos[ee];
-      max_ln_dos_energy = ee;
+      entropy_peak = ee;
     }
 
   }
@@ -272,18 +259,18 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double m
     }
   }
 
-  // above the peak density of states, use flat (infinite temperature) weights
-  for (int ee = network.energy_range - 1; ee > max_ln_dos_energy; ee--) {
-    ln_weights[ee] = -ln_dos[max_ln_dos_energy];
+  // above the entropy peak, use flat (infinite temperature) weights
+  for (int ee = network.energy_range - 1; ee > entropy_peak; ee--) {
+    ln_weights[ee] = -ln_dos[entropy_peak];
   }
   // in the range of observed energies, set weights appropriately
-  for (int ee = max_ln_dos_energy; ee > smallest_seen_energy; ee--) {
+  for (int ee = entropy_peak; ee > smallest_seen_energy; ee--) {
     ln_weights[ee] = -ln_dos[ee];
   }
   // below all observed energies use weights fixed at the minimum temperature
   for (int ee = smallest_seen_energy; ee >= 0; ee--) {
     ln_weights[ee] = (-ln_dos[smallest_seen_energy]
-                         - abs(smallest_seen_energy - ee) / min_temp);
+                      - abs(smallest_seen_energy - ee) / min_temp);
   }
 
 }
