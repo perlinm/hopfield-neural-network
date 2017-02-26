@@ -115,7 +115,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   assert(pattern_number > 0);
 
   // we can specify either nodes, or a pattern file; not both
-  assert(!nodes || pattern_file.empty());
+  assert(nodes || !pattern_file.empty());
 
   // we must choose some temperature option
   assert(inf_temp || fixed_temp || all_temps);
