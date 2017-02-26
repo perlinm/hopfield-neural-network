@@ -283,7 +283,7 @@ int main(const int arg_num, const char *arg_vec[]) {
       cout << endl;
     }
 
-    ns.reset_histograms();
+    ns.initialize_histograms();
     cout << "starting an all-temperature simulation" << endl;
   }
 
@@ -308,6 +308,7 @@ int main(const int arg_num, const char *arg_vec[]) {
       update_energy = old_energy;
     }
 
+    ns.add_transition(old_energy, new_energy - old_energy);
     ns.update_energy_histogram(update_energy);
     ns.update_state_histograms(update_energy);
     ns.update_samples(update_energy, old_energy);
@@ -343,7 +344,7 @@ int main(const int arg_num, const char *arg_vec[]) {
            << ee - ns.network.max_energy << " ";
       for (int ii = 0; ii < ns.network.nodes; ii++) {
         cout << setw(10)
-             << double(ns.state_histogram.at(ee).at(ii))/observations << " ";
+             << double(ns.state_histograms.at(ee).at(ii))/observations << " ";
       }
       cout << endl;
     }

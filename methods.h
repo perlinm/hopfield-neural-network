@@ -45,10 +45,10 @@ struct network_simulation {
 
   vector<bool> state;
   vector<long int> energy_histogram;
-  vector<vector<long int>> state_histogram;
+  vector<vector<long int>> state_histograms;
 
   // the transition matrix tells us how many times we have moved
-  //   from a given energy E with a specified energy difference dE
+  //   from a given energy with a specified energy difference
   vector<vector<long int>> energy_transitions;
 
   // have we visited this (negative) energy at least once since
@@ -90,10 +90,11 @@ struct network_simulation {
   int energy(const vector<bool>& state) const { return network.energy(state); };
   int energy() const { return energy(state); };
 
-  // reset all histograms and the visit log of visited energies
-  void reset_histograms();
+  // initialize all histograms:
+  //   energy histogram, state histograms, energy transitions, samples
+  void initialize_histograms();
 
-  // update histograms with an observation of the current state
+  // update histograms with an observation of a given energy
   void update_energy_histogram(const int energy);
   void update_state_histograms(const int energy);
 

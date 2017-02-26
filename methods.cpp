@@ -104,15 +104,8 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
   network(hopfield_network(patterns))
 {
   state = initial_state;
-  reset_histograms();
-
-  energy_transitions = vector<vector<long int>>(network.energy_range);
-  for (int ee = 0; ee < network.energy_range; ee++) {
-    energy_transitions.at(ee) = vector<long int>(2*network.max_energy_change + 1, 0);
-  }
-
+  initialize_histograms();
   visited = vector<bool>(network.energy_range, false);
-  samples = vector<int>(network.energy_range, 0);
   ln_weights = vector<double>(network.energy_range, 1);
   ln_dos = vector<double>(network.energy_range, 0);
 };
@@ -153,21 +146,24 @@ double network_simulation::transition_matrix(const int final_energy,
 // ---------------------------------------------------------------------------------------
 
 // reset all histograms and the visit log of visited energies
-void network_simulation::reset_histograms() {
-  energy_histogram = vector<long int>(network.energy_range);
-  state_histogram = vector<vector<long int>>(network.energy_range);
+void network_simulation::initialize_histograms() {
+  samples = vector<int>(network.energy_range, 0);
+  energy_histogram = vector<long int>(network.energy_range, 0);
+  state_histograms = vector<vector<long int>>(network.energy_range);
+  energy_transitions = vector<vector<long int>>(network.energy_range);
   for (int ee = 0; ee < network.energy_range; ee++) {
-    state_histogram.at(ee) = vector<long int>(network.nodes);
+    state_histograms.at(ee) = vector<long int>(network.nodes);
+    energy_transitions.at(ee) = vector<long int>(2*network.max_energy_change + 1, 0);
   }
 }
 
-// update histograms with an observation of the current state
+// update histograms with an observation of a given energy
 void network_simulation::update_energy_histogram(const int energy) {
   energy_histogram.at(energy)++;
 }
 void network_simulation::update_state_histograms(const int energy) {
   for (int ii = 0; ii < network.nodes; ii++) {
-    state_histogram.at(energy).at(ii) += state.at(ii);
+    state_histograms.at(energy).at(ii) += state.at(ii);
   }
 }
 
