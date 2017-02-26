@@ -50,12 +50,12 @@ struct network_simulation {
   int entropy_peak;
 
   vector<bool> state;
-  vector<long int> energy_histogram;
-  vector<vector<long int>> state_histograms;
+  vector<unsigned long> energy_histogram;
+  vector<vector<unsigned long>> state_histograms;
 
   // the transition matrix tells us how many times we have moved
   //   from a given energy with a specified energy difference
-  vector<vector<long int>> energy_transitions;
+  vector<vector<unsigned long>> energy_transitions;
 
   // have we visited this (negative) energy at least once since
   //   the last observation of states with energy >= 0?
@@ -63,7 +63,7 @@ struct network_simulation {
   // number of independent samples of a given (negative) energy;
   // two samples of a given energy are considered independent if
   //   we have visited states with energy >= 0 between the samples
-  vector<int> samples;
+  vector<unsigned long> samples;
 
   // logarithm of weights determining the transition probability
   //   between energies during simulation
