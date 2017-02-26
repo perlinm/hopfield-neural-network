@@ -235,47 +235,49 @@ int main(const int arg_num, const char *arg_vec[]) {
          << "sample_error cycle_number" << endl;
     int cycles = 0;
     double sample_error;
-    int update_energy;
+    int new_energy;
     int old_energy = ns.energy();
     do {
       for (int ii = 0; ii < pow(10,log10_init_cycle); ii++) {
 
-        const vector<bool> new_state = random_change(ns.state, rnd(generator));
+        const vector<bool> proposed_state = random_change(ns.state, rnd(generator));
 
-        const int new_energy = ns.energy(new_state);
-        const int energy_change = new_energy - old_energy;
+        const int proposed_energy = ns.energy(proposed_state);
+        const int energy_change = proposed_energy - old_energy;
 
         ns.add_transition(old_energy, energy_change);
 
         if (energy_change <= 0) {
           // proposed new state does not have a higher energy, always accept it
-          ns.state = new_state;
-          update_energy = new_energy;
+          ns.state = proposed_state;
+          new_energy = proposed_energy;
 
         } else {
           // otherwise, accept the move with some probability
           const double old_norm = ns.transitions_from(old_energy);
-          const double new_norm = ns.transitions_from(new_energy);
+          const double new_norm = ns.transitions_from(proposed_energy);
 
           const double forward_flux
-            = double(ns.transitions(old_energy, energy_change) + tpff) / (old_norm + tpff);
+            = (double(ns.transitions(old_energy, energy_change) + tpff)
+               / (old_norm + tpff));
           const double backward_flux
-            = double(ns.transitions(new_energy, -energy_change) + tpff) / (new_norm + tpff);
+            = (double(ns.transitions(proposed_energy, -energy_change) + tpff)
+               / (new_norm + tpff));
 
           const double acceptance_probability = max(forward_flux/backward_flux,
                                                     exp(-energy_change/temp_scale));
 
           if (rnd(generator) < acceptance_probability) {
-            ns.state = new_state;
-            update_energy = new_energy;
+            ns.state = proposed_state;
+            new_energy = proposed_energy;
           } else {
-            update_energy = old_energy;
+            new_energy = old_energy;
           }
         }
 
-        ns.update_energy_histogram(update_energy);
-        ns.update_samples(update_energy, old_energy);
-        old_energy = update_energy;
+        ns.update_energy_histogram(new_energy);
+        ns.update_sample_histogram(new_energy, old_energy);
+        old_energy = new_energy;
       }
 
       ns.compute_dos_and_weights_from_transitions(temp_scale);
@@ -301,28 +303,28 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Run simulation
   // -------------------------------------------------------------------------------------
 
-  int update_energy;
+  int new_energy;
   int old_energy = ns.energy();
   for (int ii = 0; ii < pow(10,log10_iterations); ii++) {
 
-    const vector<bool> new_state = random_change(ns.state, rnd(generator));
-    const int new_energy = ns.energy(new_state);
+    const vector<bool> proposed_state = random_change(ns.state, rnd(generator));
+    const int proposed_energy = ns.energy(proposed_state);
 
-    const double acceptance_probability = exp(ns.ln_weights[new_energy]
+    const double acceptance_probability = exp(ns.ln_weights[proposed_energy]
                                               - ns.ln_weights[old_energy]);
 
     if (rnd(generator) < acceptance_probability) {
-      ns.state = new_state;
-      update_energy = new_energy;
+      ns.state = proposed_state;
+      new_energy = proposed_energy;
     } else {
-      update_energy = old_energy;
+      new_energy = old_energy;
     }
 
-    ns.add_transition(old_energy, new_energy - old_energy);
-    ns.update_energy_histogram(update_energy);
-    ns.update_state_histograms(update_energy);
-    ns.update_samples(update_energy, old_energy);
-    old_energy = update_energy;
+    ns.update_energy_histogram(new_energy);
+    ns.update_sample_histogram(new_energy, old_energy);
+    ns.update_state_histograms(new_energy);
+    ns.update_distance_histograms(new_energy);
+    old_energy = new_energy;
   }
 
   ns.compute_dos_from_energy_histogram();
@@ -330,7 +332,9 @@ int main(const int arg_num, const char *arg_vec[]) {
   if (debug) {
     ns.print_energy_data();
     cout << endl;
-    ns.print_expected_states();
+    ns.print_states();
+    cout << endl;
+    ns.print_distances();
     cout << endl;
   }
 
