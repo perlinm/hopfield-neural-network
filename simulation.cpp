@@ -40,7 +40,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   network_parameters.add_options()
     ("nodes", po::value<int>(&nodes)->default_value(10),
      "number of nodes which make up the network")
-    ("patterns", po::value<int>(&pattern_number)->default_value(10),
+    ("patterns", po::value<int>(&pattern_number)->default_value(0,"nodes"),
      "number of random patterns to use")
     ("pattern_file", po::value<string>(&pattern_file),
      "input file containing patterns stored in the neural network")
@@ -102,6 +102,9 @@ int main(const int arg_num, const char *arg_vec[]) {
     cout << all;
     return 0;
   }
+
+  // by default, use the same number of patterns as nodes
+  if (pattern_number == 0) pattern_number = nodes;
 
   // -------------------------------------------------------------------------------------
   // Process and run sanity checks on inputs
@@ -254,7 +257,6 @@ int main(const int arg_num, const char *arg_vec[]) {
         ns.update_energy_histogram(update_energy);
         ns.update_samples(update_energy, old_energy);
         old_energy = update_energy;
-
       }
 
       ns.compute_dos_and_weights_from_transitions(temp_scale);
