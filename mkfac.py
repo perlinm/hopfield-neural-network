@@ -38,7 +38,8 @@ mkl_flags = ("-Wl,--no-as-needed,-rpath=$(cat {0})/lib/intel64/" + \
 
 lib_flags = {"eigen3" : ["$(cat {})".format(eigen_dirs), eigen_dirs],
              "USE_MKL" : ["{}".format(mkl_flags), mkl_root],
-             "boost/filesystem" : ["-lboost_system -lboost_filesystem"],
+             "boost" : ["-lboost_system"],
+             "boost/filesystem" : ["-lboost_filesystem"],
              "boost/program_options" : ["-lboost_program_options"],
              "gsl" : "-lgsl"}
 

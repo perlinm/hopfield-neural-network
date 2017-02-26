@@ -1,16 +1,16 @@
-| g++ -std=c++11 -Wall -Werror -flto -O3  -c -o methods.o methods.cpp
+| g++ -std=c++11 -Wall -Werror -flto -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-local-typedefs  -c -o methods.o methods.cpp
 < methods.h
 < methods.cpp
 C ~/.ccache/
 > methods.o
 
-| g++ -std=c++11 -Wall -Werror -flto -O3 -lboost_system -lboost_filesystem -lboost_program_options -c -o simulation.o simulation.cpp
+| g++ -std=c++11 -Wall -Werror -flto -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-local-typedefs -lboost_system -lboost_filesystem -lboost_system -lboost_program_options -lboost_system -c -o simulation.o simulation.cpp
 < methods.h
 < simulation.cpp
 C ~/.ccache/
 > simulation.o
 
-| g++ -std=c++11 -Wall -Werror -flto -O3 -lboost_system -lboost_filesystem -lboost_program_options -o simulate.exe methods.o simulation.o
+| g++ -std=c++11 -Wall -Werror -flto -O3 -Wno-unused-variable -Wno-unused-but-set-variable -Wno-unused-local-typedefs -lboost_system -lboost_filesystem -lboost_program_options -o simulate.exe methods.o simulation.o
 < methods.h
 < methods.o
 < simulation.o

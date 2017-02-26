@@ -5,10 +5,12 @@
 
 #include <boost/filesystem.hpp> // filesystem path manipulation library
 #include <boost/program_options.hpp> // options parsing library
+#include <boost/functional/hash.hpp> // for hashing methods
 
 #include "methods.h"
 
 using namespace std;
+namespace bo = boost;
 namespace fs = boost::filesystem;
 namespace po = boost::program_options;
 
@@ -172,6 +174,21 @@ int main(const int arg_num, const char *arg_vec[]) {
   nodes = patterns[0].size();
 
   network_simulation ns(patterns, random_state(nodes, rnd, generator));
+
+  // make simulation hash
+  const int hash = [&]() -> int {
+    size_t running_hash = 0;
+    for (int pp = 0, size = patterns.size(); pp < size; pp++) {
+      for (int nn = 0; nn < ns.network.nodes; nn++) {
+        bo::hash_combine(running_hash, size_t(patterns[pp][nn]));
+      }
+    }
+    bo::hash_combine(running_hash, size_t(all_temps));
+    bo::hash_combine(running_hash, size_t(fixed_temp));
+    bo::hash_combine(running_hash, size_t(inf_temp));
+    bo::hash_combine(running_hash, size_t(temp_scale));
+    return running_hash;
+  }();
 
   // adjust temperature scale to be compatible with the energy units used in simulation
   temp_scale *= double(nodes)/ns.network.energy_scale;
