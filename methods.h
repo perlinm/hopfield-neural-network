@@ -27,7 +27,6 @@ struct hopfield_network {
   int energy_scale;
   int max_energy;
   int max_energy_change;
-  int energy_range;
 
   hopfield_network(const vector<vector<bool>>& patterns);
 
@@ -45,6 +44,8 @@ struct network_simulation {
 
   const vector<vector<bool>> patterns;
   const hopfield_network network;
+  const int energy_range;
+  const int max_de;
 
   // energy at which entropy is maximized
   int entropy_peak;

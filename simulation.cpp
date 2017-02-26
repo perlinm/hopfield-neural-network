@@ -216,12 +216,12 @@ int main(const int arg_num, const char *arg_vec[]) {
   if (inf_temp) {
 
     cout << "starting an infinite temperature simulation" << endl;
-    ns.ln_weights = vector<double>(ns.network.energy_range, 1);
+    ns.ln_weights = vector<double>(ns.energy_range, 1);
 
   } else if (fixed_temp) {
 
     cout << "starting a fixed temperature simulation" << endl;
-    for (int ee = 0; ee < ns.network.energy_range; ee++) {
+    for (int ee = 0; ee < ns.energy_range; ee++) {
       ns.ln_weights[ee] = -ee/temp_scale;
     }
 
