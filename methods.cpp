@@ -46,7 +46,6 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
   // generate interaction matrix from patterns
   // note: these couplings are a factor of (nodes) greater than the regular definition
   couplings = vector<vector<int>>(nodes);
-  max_energy = 0;
   for (int ii = 0; ii < nodes; ii++) {
     couplings[ii] = vector<int>(nodes, 0);
     for (int jj = 0; jj < nodes; jj++) {
@@ -55,12 +54,24 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
         const int coupling = (2*patterns[pp][ii]-1)*(2*patterns[pp][jj]-1);
         couplings[ii][jj] += coupling;
       }
-      max_energy += abs(couplings[ii][jj]);
     }
   }
 
+  // determine maximum energy achievable by network
+  max_energy = 0;
+  for (int pp = 0, size = patterns.size(); pp < size; pp++) {
+    int pattern_energy = 0;
+    for (int ii = 0; ii < nodes; ii++) {
+      for (int jj = ii + 1; jj < nodes; jj++) {
+        pattern_energy
+          -= couplings[ii][jj] * (2*patterns[pp][ii]-1) * (2*patterns[pp][jj]-1);
+      }
+    }
+    max_energy = max(-2*pattern_energy, max_energy);
+  }
+
   max_energy_change = 0;
-  energy_scale = max_energy;
+  energy_scale = 2*max_energy;
   for (int ii = 0; ii < nodes; ii++) {
     int node_energy = 0;
     for (int jj = 0; jj < nodes; jj++) {
@@ -70,22 +81,21 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
     energy_scale = gcd(node_energy, energy_scale);
   }
 
-  max_energy /= energy_scale;
   max_energy_change /= energy_scale;
-  energy_range = 2*max_energy + 1;
+  energy_range = 2*max_energy/energy_scale;
 };
 
 // energy of the network in a given state
-// note: this energy is shifted up by the maximum energy, and is an additional
-//       factor of (nodes/energy_scale) greater than the regular definition
+// note: this energy is a factor of (nodes/energy_scale) greater
+//   than the regular definition, in addition to being shifted up a bit
 int hopfield_network::energy(const vector<bool>& state) const {
-  int sum = 0;
+  int energy = 0;
   for (int ii = 0; ii < nodes; ii++) {
     for (int jj = ii + 1; jj < nodes; jj++) {
-      sum += couplings[ii][jj] * (2*state[ii]-1) * (2*state[jj]-1);
+      energy -= couplings[ii][jj] * (2*state[ii]-1) * (2*state[jj]-1);
     }
   }
-  return -sum/energy_scale + max_energy;
+  return (energy + max_energy) / energy_scale;
 }
 
 
@@ -113,7 +123,7 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
   patterns(patterns),
   network(hopfield_network(patterns))
 {
-  entropy_peak = network.max_energy;
+  entropy_peak = (network.energy_range + 1) / 2;
   state = initial_state;
   initialize_histograms();
   ln_weights = vector<double>(network.energy_range, 1);
@@ -353,7 +363,7 @@ void network_simulation::print_patterns() const {
   const int energy_width = log10(network.max_energy) + 2;
   for (int ii = 0, size = patterns.size(); ii < size; ii++) {
     cout << "(" << setw(energy_width)
-         << energy(patterns[ii]) - network.max_energy << ") ";
+         << energy(patterns[ii]) * network.energy_scale - network.max_energy << ") ";
     for (int jj = 0; jj < network.nodes; jj++) {
       cout << patterns[ii][jj] << " ";
     }
@@ -372,7 +382,8 @@ void network_simulation::print_energy_data() const {
     const int observations = energy_histogram[ee];
     if (observations != 0) {
       cout << fixed
-           << setw(energy_width) << ee - network.max_energy << " "
+           << setw(energy_width)
+           << ee * network.energy_scale - network.max_energy << " "
            << setw(energy_hist_width) << observations << " "
            << setw(sample_width) << sample_histogram[ee] << " "
            << setw(dos_dec + 3) << setprecision(dos_dec)
@@ -390,7 +401,7 @@ void network_simulation::print_states() const {
   for (int ee = network.energy_range - 1; ee >= 0; ee--) {
     const int observations = energy_histogram[ee];
     if (observations > 0) {
-      cout << setw(energy_width) << ee - network.max_energy;
+      cout << setw(energy_width) << ee * network.energy_scale - network.max_energy;
       for (int ii = 0; ii < network.nodes; ii++) {
         cout << " " << setw(state_dec + 3)
              << 2*double(state_histograms[ee][ii])/observations - 1;
@@ -410,7 +421,7 @@ void network_simulation::print_distances() const {
   for (int ee = network.energy_range - 1; ee >= 0; ee--) {
     const int observations = energy_histogram[ee];
     if (observations > 0) {
-      cout << setw(energy_width) << ee - network.max_energy;
+      cout << setw(energy_width) << ee * network.energy_scale - network.max_energy;
       for (int ii = 0; ii < pattern_number; ii++) {
         cout << " " << setw(distance_dec + 2)
              << double(distance_histograms[ee][ii]) / observations;

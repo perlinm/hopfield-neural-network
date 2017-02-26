@@ -32,8 +32,8 @@ struct hopfield_network {
   hopfield_network(const vector<vector<bool>>& patterns);
 
   // energy of the network in a given state
-  // note: this energy is shifted up by the maximum energy, and is an additional
-  //       factor of (nodes/energy_scale) greater than the regular definition
+  // note: this energy is a factor of (nodes/energy_scale) greater
+  //   than the regular definition, in addition to being shifted up a bit
   int energy(const vector<bool>& state) const;
 
   void print_couplings() const;
