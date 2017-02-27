@@ -84,8 +84,8 @@ struct network_simulation {
   //   the mean distance from pattern pp at an energy ee
   vector<vector<unsigned long>> distance_histograms;
 
-  // stores the number times we have moved from a given energy
-  //   with a specified energy difference
+  // stores the number times we have proposed a move
+  //   from a given energy with a specified energy difference
   // indexed by (energy, change in energy)
   vector<vector<unsigned long>> transition_histogram;
 
@@ -143,15 +143,19 @@ struct network_simulation {
   void update_sample_histogram(const int new_energy, const int old_energy);
   void update_transition_histogram(const int energy, const int energy_change);
 
-  // expectation value of fractional sample error at a given inverse temperature
-  // WARNING: assumes that the density of states is up to date
-  double fractional_sample_error(const double beta) const;
-
-  // compute density of states and appropriate energy weights from the transition matrix
-  void compute_dos_and_weights_from_transitions(const double beta);
+  // compute density of states from the transition matrix
+  void compute_dos_from_transitions();
 
   // compute density of states from the energy histogram
   void compute_dos_from_energy_histogram();
+
+  // construct weight array from the density of states
+  // WARNING: assumes that the density of states is up to date
+  void compute_weights_from_dos(const double beta);
+
+  // expectation value of fractional sample error at a given inverse temperature
+  // WARNING: assumes that the density of states is up to date
+  double fractional_sample_error(const double beta) const;
 
   // -------------------------------------------------------------------------------------
   // Printing methods

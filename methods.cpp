@@ -1,7 +1,6 @@
 #include <iostream> // for standard output
 #include <iomanip> // for io manipulation (e.g. setw)
 #include <random> // for randomness
-#include <cassert> // for assertions
 #include <algorithm> // for sort method
 
 #include "methods.h"
@@ -267,59 +266,8 @@ void network_simulation::update_transition_histogram(const int energy,
   transition_histogram[energy][energy_change + max_de]++;
 }
 
-// expectation value of fractional sample error at a given inverse temperature
-// WARNING: assumes that the density of states is up to date
-double network_simulation::fractional_sample_error(const double beta_cap) const {
-  assert(beta_cap != 0); // we should not be here if beta == 0
-
-  // determine the lowest and highest energies we care about
-  int lowest_energy;
-  int highest_energy;
-  if (beta_cap > 0) { // we care about low energies
-    highest_energy = entropy_peak;
-    // set lowest_energy to the lowest energy we have sampled
-    for (int ee = 0; ee < entropy_peak; ee++) {
-      if (sample_histogram[ee] != 0) {
-        lowest_energy = ee;
-        break;
-      }
-    }
-
-  } else { // we care about low energies
-    lowest_energy = entropy_peak;
-    // set highest_energy to the highest energy we have sampled
-    for (int ee = energy_range - 1; ee > entropy_peak; ee--) {
-      if (sample_histogram[ee] != 0) {
-        highest_energy = ee;
-        break;
-      }
-    }
-  }
-  // the mean energy we care about
-  const int mean_energy = (highest_energy + lowest_energy) / 2;
-
-  // sum up the fractional error in sample counts with appropriate boltzmann factors
-  long double error = 0;
-  long double normalization = 0; // this is the partition function
-  for (int ee = lowest_energy; ee < highest_energy; ee++) {
-    if (sample_histogram[ee] != 0) {
-      // offset ln_dos[ee] and the energy ee by their values at the mean energy
-      //   we care about in order to avoid numerical overflows
-      // this offset amounts to multiplying both (error) and (normalization) by
-      //   a constant factor, which means that it does not affect (error/normalization)
-      const double ln_dos_ee = ln_dos[ee] - ln_dos[mean_energy];
-      const double energy = ee - mean_energy;
-      const long double boltzmann_factor = exp(ln_dos_ee - energy * beta_cap);
-      error += boltzmann_factor/sqrt(sample_histogram[ee]);
-      normalization += boltzmann_factor;
-    }
-  }
-  return error/normalization;
-}
-
-
-// compute density of states and appropriate energy weights from the transition matrix
-void network_simulation::compute_dos_and_weights_from_transitions(const double beta_cap) {
+// compute density of states from the transition matrix
+void network_simulation::compute_dos_from_transitions() {
 
   // keep track of the maximal value of ln_dos
   double max_ln_dos = 0;
@@ -356,8 +304,28 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double b
     ln_dos[ee] -= max_ln_dos;
   }
 
-  if (beta_cap > 0) {
+}
 
+// compute density of states from the energy histogram
+void network_simulation::compute_dos_from_energy_histogram() {
+  // keep track of the maximal value of ln_dos
+  double max_ln_dos = 0;
+  for (int ee = 0; ee < energy_range; ee++) {
+    ln_dos[ee] = log(energy_histogram[ee]) - ln_weights[ee];
+    max_ln_dos = max(ln_dos[ee], max_ln_dos);
+  }
+  // subtract off the maximal value of ln_dos from the entire array,
+  //   which normalizes the density of states to 1 at the entropy peak
+  for (int ee = 0; ee < energy_range; ee++) {
+    ln_dos[ee] -= max_ln_dos;
+  }
+};
+
+// construct weight array from the density of states
+// WARNING: assumes that the density of states is up to date
+void network_simulation::compute_weights_from_dos(const double beta_cap) {
+
+  if (beta_cap > 0) {
     // if we care about positive temperatures, then we are interested in low energies
     // identify the lowest energy we have seen
     int lowest_seen_energy = 0;
@@ -411,25 +379,57 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double b
     for (int ee = 0; ee < entropy_peak; ee++) {
       ln_weights[ee] = -ln_dos[entropy_peak];
     }
-
   }
-
 }
 
-// compute density of states from the energy histogram
-void network_simulation::compute_dos_from_energy_histogram() {
-  // keep track of the maximal value of ln_dos
-  double max_ln_dos = 0;
-  for (int ee = 0; ee < energy_range; ee++) {
-    ln_dos[ee] = log(energy_histogram[ee]) - ln_weights[ee];
-    max_ln_dos = max(ln_dos[ee], max_ln_dos);
+// expectation value of fractional sample error at a given inverse temperature
+// WARNING: assumes that the density of states is up to date
+double network_simulation::fractional_sample_error(const double beta_cap) const {
+
+  // determine the lowest and highest energies we care about
+  int lowest_energy;
+  int highest_energy;
+  if (beta_cap > 0) { // we care about low energies
+    highest_energy = entropy_peak;
+    // set lowest_energy to the lowest energy we have sampled
+    for (int ee = 0; ee < entropy_peak; ee++) {
+      if (sample_histogram[ee] != 0) {
+        lowest_energy = ee;
+        break;
+      }
+    }
+
+  } else { // we care about low energies
+    lowest_energy = entropy_peak;
+    // set highest_energy to the highest energy we have sampled
+    for (int ee = energy_range - 1; ee > entropy_peak; ee--) {
+      if (sample_histogram[ee] != 0) {
+        highest_energy = ee;
+        break;
+      }
+    }
   }
-  // subtract off the maximal value of ln_dos from the entire array,
-  //   which normalizes the density of states to 1 at the entropy peak
-  for (int ee = 0; ee < energy_range; ee++) {
-    ln_dos[ee] -= max_ln_dos;
+  // the mean energy we care about
+  const int mean_energy = (highest_energy + lowest_energy) / 2;
+
+  // sum up the fractional error in sample counts with appropriate boltzmann factors
+  long double error = 0;
+  long double normalization = 0; // this is the partition function
+  for (int ee = lowest_energy; ee < highest_energy; ee++) {
+    if (sample_histogram[ee] != 0) {
+      // offset ln_dos[ee] and the energy ee by their values at the mean energy
+      //   we care about in order to avoid numerical overflows
+      // this offset amounts to multiplying both (error) and (normalization) by
+      //   a constant factor, which means that it does not affect (error/normalization)
+      const double ln_dos_ee = ln_dos[ee] - ln_dos[mean_energy];
+      const double energy = ee - mean_energy;
+      const long double boltzmann_factor = exp(ln_dos_ee - energy * beta_cap);
+      error += boltzmann_factor/sqrt(sample_histogram[ee]);
+      normalization += boltzmann_factor;
+    }
   }
-};
+  return error/normalization;
+}
 
 // ---------------------------------------------------------------------------------------
 // Printing methods

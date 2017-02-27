@@ -77,13 +77,14 @@ int main(const int arg_num, const char *arg_vec[]) {
     ("init_cycle", po::value<int>(&log10_init_cycle)->default_value(7),
      "log10 of the number of iterations in one initialization cycle")
     ("sample_error", po::value<double>(&target_sample_error)->default_value(0.01,"0.01"),
-     "the transition matrix initialization routine terminates when it achieves"
-     " this expected fractional sample error at an inverse temperature beta_cap")
+     "the initialization routine terminates when it achieves this"
+     " expected fractional sample error at an inverse temperature beta_cap")
     ("transition_factor", po::value<int>(&tpff)->default_value(1),
      "fudge factor in computation of move acceptance probability"
      " during transition matrix initialization")
     ;
 
+  // collect options
   po::options_description all("All options");
   all.add(general);
   all.add(network_parameters);
@@ -109,17 +110,35 @@ int main(const int arg_num, const char *arg_vec[]) {
   // -------------------------------------------------------------------------------------
 
   // we should have at least two nodes, and at least one pattern
-  assert(nodes > 1);
-  assert(pattern_number > 0);
+  if (nodes < 2) {
+    cout << "the network should consist of at least two nodes" << endl;
+    return -1;
+  }
+
+  if (pattern_number < 1) {
+    cout << "we need at least one pattern to define a (nontrivial) network" << endl;
+    return -1;
+  }
 
   // we can specify either nodes, or a pattern file; not both
-  assert(nodes || !pattern_file.empty());
+  if (!nodes && pattern_file.empty()) {
+    cout << "either choose a size (number of nodes) for a network"
+         << " with random patterns, or provide a pattern file" << endl;
+    return -1;
+  }
 
   // we must run either an all-temperature or a fixed-temperature simulation
-  assert(all_temps + fixed_temp == 1);
+  if (all_temps + fixed_temp != 1) {
+    cout << "you need to choose whether to run a all- "
+         << " or fixed-temperature simulation" << endl;
+    return -1;
+  }
 
   // if we specified a pattern file, make sure it exists
-  assert(pattern_file.empty() || fs::exists(pattern_file));
+  if (!pattern_file.empty() && !fs::exists(pattern_file)) {
+    cout << "the specified pattern file does not exist!" << endl;
+    return -1;
+  }
 
   // determine whether we are using a pattern file afterall
   const bool using_pattern_file = !pattern_file.empty();
@@ -135,10 +154,13 @@ int main(const int arg_num, const char *arg_vec[]) {
   vector<vector<bool>> patterns;
 
   // if we are using a pattern file, read it in
+  // each line of the pattern file should contain one pattern,
+  //   identified by 1s (spin up, or +1) and 0s (spin down, or -1)
   if (using_pattern_file) {
     ifstream input(pattern_file);
     string line;
 
+    // loop over lines
     while (getline(input,line)) {
       vector<bool> pattern = {};
       for (int ii = 0, size = line.length(); ii < size; ii++) {
@@ -148,14 +170,17 @@ int main(const int arg_num, const char *arg_vec[]) {
       patterns.push_back(pattern);
     }
 
-  } else { // if we are not using a pattern file, generate random patterns
+  } else {
 
+    // if we are not using a pattern file, generate random patterns
     for (int ii = 0; ii < pattern_number; ii++) {
       patterns.push_back(random_state(nodes, rnd, generator));
     }
 
   }
 
+  // make sure that all patterns are the same size,
+  //   i.e. they all contain the same number of nodes
   for (int ii = 1, size = patterns.size(); ii < size; ii++) {
     if (patterns[ii-1].size() != patterns[ii].size()){
       cout << "patterns " << ii-1 << " and " << ii
@@ -163,25 +188,17 @@ int main(const int arg_num, const char *arg_vec[]) {
       return -1;
     }
   }
-  pattern_number = patterns.size();
+  // set the number of nodes and number of patterns
   nodes = patterns[0].size();
+  pattern_number = patterns.size();
 
+  // construct network simulation object with a random initial state
   network_simulation ns(patterns, random_state(nodes, rnd, generator));
-
-  // make pattern hash
-  const int hash = [&]() -> int {
-    size_t running_hash = 0;
-    for (int pp = 0, size = patterns.size(); pp < size; pp++) {
-      for (int nn = 0; nn < ns.network.nodes; nn++) {
-        bo::hash_combine(running_hash, size_t(patterns[pp][nn]));
-      }
-    }
-    return running_hash;
-  }();
 
   // set inverse temperature scale the inverse units of our energies
   const double beta_cap = double(beta_cap_int*ns.network.energy_scale)/nodes;
 
+  // print some info
   cout << endl
        << "maximum energy: " << ns.network.max_energy << endl
        << "maximum energy change: " << ns.network.max_energy_change << endl
@@ -196,14 +213,27 @@ int main(const int arg_num, const char *arg_vec[]) {
     cout << endl;
   }
 
+  // make a hash of the patterns to identify this network
+  const int hash = [&]() -> int {
+    size_t running_hash = 0;
+    for (int pp = 0, size = patterns.size(); pp < size; pp++) {
+      for (int nn = 0; nn < ns.network.nodes; nn++) {
+        bo::hash_combine(running_hash, size_t(patterns[pp][nn]));
+      }
+    }
+    return running_hash;
+  }();
+
   // -------------------------------------------------------------------------------------
-  // Initialize weight array
+  // Initialize the weight array
   // -------------------------------------------------------------------------------------
 
   // initialize weight array
   if (fixed_temp || beta_cap == 0) {
 
     cout << "starting a fixed temperature simulation" << endl;
+
+    // for a fixed (or infinite) temperature simulation, use boltzmann weights
     for (int ee = 0; ee < ns.energy_range; ee++) {
       ns.ln_weights[ee] = -ee * beta_cap;
     }
@@ -212,27 +242,34 @@ int main(const int arg_num, const char *arg_vec[]) {
 
     cout << "initializing transition matrix for an all-temperature simulation..." << endl
          << "sample_error cycle_number" << endl;
+
+    // number of initialization cycles we have finished
     int cycles = 0;
+    // expected fractional error in sample count at an inverse temperature beta
     double sample_error;
-    int new_energy;
-    int old_energy = ns.energy();
+
+    int new_energy; // energy of the state we move into
+    int old_energy = ns.energy(); // energy of the last state
     do {
       for (int ii = 0; ii < pow(10,log10_init_cycle); ii++) {
 
+        // construct the state which we are proposing to move into
         const vector<bool> proposed_state = random_change(ns.state, rnd(generator));
 
+        // energy of the proposed state, and the energy change for the proposed move
         const int proposed_energy = ns.energy(proposed_state);
         const int energy_change = proposed_energy - old_energy;
 
+        // this update should happen regardless of whether we make the move
         ns.update_transition_histogram(old_energy, energy_change);
 
         if (energy_change <= 0) {
-          // proposed new state does not have a higher energy, always accept it
+          // always accept moves into states of lower energy
           ns.state = proposed_state;
           new_energy = proposed_energy;
 
         } else {
-          // otherwise, accept the move with some probability
+          // accept the moves to higher energy states with some probability
           const double old_norm = ns.transitions_from(old_energy);
           const double new_norm = ns.transitions_from(proposed_energy);
 
@@ -246,20 +283,27 @@ int main(const int arg_num, const char *arg_vec[]) {
           const double acceptance_probability = max(forward_flux / backward_flux,
                                                     exp(-energy_change * beta_cap));
 
+          // if we pass a probability test, accept the move
           if (rnd(generator) < acceptance_probability) {
             ns.state = proposed_state;
             new_energy = proposed_energy;
           } else {
+            // otherwise reject it
             new_energy = old_energy;
           }
         }
 
+        // update the energy and sample histograms
+        // we don't care about other histograms during initialization
         ns.update_energy_histogram(new_energy);
         ns.update_sample_histogram(new_energy, old_energy);
+
+        // as we move on with our lives (and this loop) the new energy turns old
         old_energy = new_energy;
       }
 
-      ns.compute_dos_and_weights_from_transitions(beta_cap);
+      // after one iteration cycle, compute the density of states
+      ns.compute_dos_from_transitions();
 
       cycles++;
       sample_error = ns.fractional_sample_error(beta_cap);
@@ -273,6 +317,8 @@ int main(const int arg_num, const char *arg_vec[]) {
       ns.print_energy_data();
       cout << endl;
     }
+
+    ns.compute_weights_from_dos(beta_cap);
 
     ns.state = random_state(nodes, rnd, generator);
     ns.initialize_histograms();
