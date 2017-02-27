@@ -302,15 +302,19 @@ int main(const int arg_num, const char *arg_vec[]) {
         old_energy = new_energy;
       }
 
-      // after one iteration cycle, compute the density of states
+      // increment the cycle cound and compute the density of states
+      cycles++;
       ns.compute_dos_from_transitions();
 
-      cycles++;
+      // compute the expected fractional sample error at an inverse temperature beta_cap
       sample_error = ns.fractional_sample_error(beta_cap);
+
       cout << fixed << setprecision(ceil(-log10(target_sample_error)) + 2)
            << sample_error << " " << cycles << endl;
 
+      // loop until we satisfy the end condition for initialization
     } while (sample_error > target_sample_error);
+
     cout << endl;
 
     if (debug) {
@@ -318,10 +322,13 @@ int main(const int arg_num, const char *arg_vec[]) {
       cout << endl;
     }
 
+    // compute weights appropriately
     ns.compute_weights_from_dos(beta_cap);
 
+    // initialize a new random state and clear the histograms
     ns.state = random_state(nodes, rnd, generator);
     ns.initialize_histograms();
+
     cout << "starting an all-temperature simulation" << endl << endl;
   }
 
