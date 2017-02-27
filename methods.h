@@ -138,7 +138,7 @@ struct network_simulation {
   // update histograms with an observation
   void update_energy_histogram(const int energy);
   void update_state_histograms(const int energy);
-  void update_distance_histograms(const vector<boo>& state, const int energy);
+  void update_distance_histograms(const vector<bool>& state, const int energy);
   void update_sample_histogram(const int new_energy, const int old_energy);
   void add_transition(const int energy, const int energy_change);
 

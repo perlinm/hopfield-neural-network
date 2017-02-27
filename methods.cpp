@@ -133,16 +133,15 @@ void hopfield_network::print_couplings() const {
 // network simulation constructor
 network_simulation::network_simulation(const vector<vector<bool>>& patterns,
                                        const vector<bool>& initial_state) :
-  // set patterns, construct network
   patterns(patterns),
   network(hopfield_network(patterns)),
   energy_range(2*network.max_energy/network.energy_scale),
   max_de(network.max_energy_change/network.energy_scale)
 {
-  entropy_peak = (energy_range + 1) / 2;
+  entropy_peak = energy_range / 2; // an initial guess
   state = initial_state;
   initialize_histograms();
-  ln_weights = vector<double>(energy_range, 1);
+  ln_weights = vector<double>(energy_range, 0);
   ln_dos = vector<double>(energy_range, 0);
 };
 
@@ -157,11 +156,11 @@ int network_simulation::transitions(const int energy, const int energy_change) c
 
 // number of attempted transitions from a given energy into any other energy
 int network_simulation::transitions_from(const int energy) const {
-  int sum = 0;
+  int count = 0;
   for (int de = -max_de; de <= max_de; de++) {
-    sum += transitions(energy, de);
+    count += transitions(energy, de);
   }
-  return sum;
+  return count;
 }
 
 // elements of the actual normalized transition matrix:
@@ -171,11 +170,14 @@ double network_simulation::transition_matrix(const int final_energy,
   const int energy_change = final_energy - initial_energy;
   if (abs(energy_change) > max_de) return 0;
 
+  // normalization factor: sum of all transitions from the initial energy
   const int normalization = transitions_from(initial_energy);
+
+  // if the normalization factor is zero, it's because we have never seen this energy
+  // by default, set these elements of the transition energy to zero
   if (normalization == 0) return 0;
 
-  return (double(transitions(initial_energy, energy_change))
-          / transitions_from(initial_energy));
+  return double(transitions(initial_energy, energy_change)) / normalization;
 }
 
 // ---------------------------------------------------------------------------------------
@@ -211,14 +213,15 @@ void network_simulation::update_state_histograms(const int energy) {
   }
 }
 
-void network_simulation::update_distance_histograms(const vector<boo>& state,
+void network_simulation::update_distance_histograms(const vector<bool>& state,
                                                     const int energy) {
   for (int pp = 0, size = patterns.size(); pp < size; pp++) {
     distance_histograms[energy][pp] += state_distance(state,patterns[pp]);
   }
 }
 
-void network_simulation::update_sample_histogram(const int new_energy, const int old_energy) {
+void network_simulation::update_sample_histogram(const int new_energy,
+                                                 const int old_energy) {
   if (!visit_log[new_energy]) {
     visit_log[new_energy] = true;
     sample_histogram[new_energy]++;
@@ -281,8 +284,10 @@ double network_simulation::fractional_sample_error(const double beta_cap) const 
   }
   const int mean_energy = (highest_energy + lowest_energy) / 2;
 
-  long double error = 1;
-  long double normalization = 1;
+  if (highest_energy == lowest_energy) return 1;
+
+  long double error = 0;
+  long double normalization = 0;
   for (int ee = lowest_energy; ee < highest_energy; ee++) {
     if (sample_histogram[ee] != 0) {
       const long double boltzmann_factor
