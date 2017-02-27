@@ -224,7 +224,7 @@ int main(const int arg_num, const char *arg_vec[]) {
         const int proposed_energy = ns.energy(proposed_state);
         const int energy_change = proposed_energy - old_energy;
 
-        ns.add_transition(old_energy, energy_change);
+        ns.update_transition_histogram(old_energy, energy_change);
 
         if (energy_change <= 0) {
           // proposed new state does not have a higher energy, always accept it

@@ -84,9 +84,10 @@ struct network_simulation {
   //   the mean distance from pattern pp at an energy ee
   vector<vector<unsigned long>> distance_histograms;
 
-  // the transition matrix tells us how many times we have moved
-  //   from a given energy with a specified energy difference
-  vector<vector<unsigned long>> energy_transitions;
+  // stores the number times we have moved from a given energy
+  //   with a specified energy difference
+  // indexed by (energy, change in energy)
+  vector<vector<unsigned long>> transition_histogram;
 
   // visit_log[ee] answers the question: have we visited the energy ee
   // at least once since the last observation of a maximual entropy state?
@@ -132,7 +133,7 @@ struct network_simulation {
 
   // initialize all histograms:
   //   energy histogram, visit log, sample histogram,
-  //   state histograms, distance histograms, energy transitions
+  //   state histograms, distance histograms, transition histogram
   void initialize_histograms();
 
   // update histograms with an observation
@@ -140,7 +141,7 @@ struct network_simulation {
   void update_state_histograms(const int energy);
   void update_distance_histograms(const vector<bool>& state, const int energy);
   void update_sample_histogram(const int new_energy, const int old_energy);
-  void add_transition(const int energy, const int energy_change);
+  void update_transition_histogram(const int energy, const int energy_change);
 
   // expectation value of fractional sample error at a given inverse temperature
   // WARNING: assumes that the density of states is up to date

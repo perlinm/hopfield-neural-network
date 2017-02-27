@@ -151,7 +151,7 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
 
 // number of attempted transitions from a given energy with a specified energy change
 int network_simulation::transitions(const int energy, const int energy_change) const {
-  return energy_transitions[energy][energy_change + max_de];
+  return transition_histogram[energy][energy_change + max_de];
 }
 
 // number of attempted transitions from a given energy into any other energy
@@ -193,16 +193,15 @@ void network_simulation::initialize_histograms() {
   sample_histogram = vector<unsigned long>(energy_range, 0);
   state_histograms = vector<vector<unsigned long>>(energy_range);
   distance_histograms = vector<vector<unsigned long>>(energy_range);
-  energy_transitions = vector<vector<unsigned long>>(energy_range);
+  transition_histogram = vector<vector<unsigned long>>(energy_range);
   const int pattern_number = patterns.size();
   for (int ee = 0; ee < energy_range; ee++) {
     state_histograms[ee] = vector<unsigned long>(network.nodes, 0);
     distance_histograms[ee] = vector<unsigned long>(pattern_number, 0);
-    energy_transitions[ee] = vector<unsigned long>(2*max_de + 1, 0);
+    transition_histogram[ee] = vector<unsigned long>(2*max_de + 1, 0);
   }
 }
 
-// update histograms with an observation
 void network_simulation::update_energy_histogram(const int energy) {
   energy_histogram[energy]++;
 }
@@ -222,50 +221,63 @@ void network_simulation::update_distance_histograms(const vector<bool>& state,
 
 void network_simulation::update_sample_histogram(const int new_energy,
                                                  const int old_energy) {
+  // if we have not yet visited this energy since the last observation
+  //   of a maximual entropy state, add to the sample histogram
   if (!visit_log[new_energy]) {
     visit_log[new_energy] = true;
     sample_histogram[new_energy]++;
   }
 
-  if (old_energy == entropy_peak) {
-    visit_log[entropy_peak] = false;
-    return;
-  }
+  // if we are at the entropy peak, reset the visit log and return
   if (new_energy == entropy_peak) {
-    visit_log = vector<bool>(energy_range, false);
+    if (old_energy != entropy_peak) {
+      visit_log = vector<bool>(energy_range, false);
+    } else {
+      // if we were at the entropy peak the last time we updated the sample histogram,
+      //   we only need to reset the visit log at the entropy peak itself,
+      //   as it is already false everywhere else
+      visit_log[entropy_peak] = false;
+    }
     return;
   }
 
+  // determine whether we have crossed the entropy peak since the last move
   const bool above_peak_now = (new_energy > entropy_peak);
   const bool above_peak_before = (old_energy > entropy_peak);
+
+  // if we did not cross the entropy peak, return
   if (above_peak_now == above_peak_before) return;
 
+  // if we did cross the entropy peak, reset the appropriate parts of the visit log
   if (above_peak_now) {
-    // reset visit log at low energies
+    // reset visit log below the entropy peak
     for (int ee = 0; ee < entropy_peak; ee++) {
       visit_log[ee] = false;
     }
-  } else {
-    // reset visit log at high energies
+  } else { // if below peak now
+    // reset visit log above the entropy peak
     for (int ee = entropy_peak + 1; ee < energy_range; ee++) {
       visit_log[ee] = false;
     }
   }
 }
 
-void network_simulation::add_transition(const int energy, const int energy_change) {
-  energy_transitions[energy][energy_change + max_de]++;
+void network_simulation::update_transition_histogram(const int energy,
+                                                     const int energy_change) {
+  transition_histogram[energy][energy_change + max_de]++;
 }
 
 // expectation value of fractional sample error at a given inverse temperature
 // WARNING: assumes that the density of states is up to date
 double network_simulation::fractional_sample_error(const double beta_cap) const {
-  assert(beta_cap != 0);
+  assert(beta_cap != 0); // we should not be here if beta == 0
 
+  // determine the lowest and highest energies we care about
   int lowest_energy;
   int highest_energy;
-  if (beta_cap > 0) { // low energies
+  if (beta_cap > 0) { // we care about low energies
     highest_energy = entropy_peak;
+    // set lowest_energy to the lowest energy we have sampled
     for (int ee = 0; ee < entropy_peak; ee++) {
       if (sample_histogram[ee] != 0) {
         lowest_energy = ee;
@@ -273,8 +285,9 @@ double network_simulation::fractional_sample_error(const double beta_cap) const 
       }
     }
 
-  } else { // high energies
+  } else { // we care about low energies
     lowest_energy = entropy_peak;
+    // set highest_energy to the highest energy we have sampled
     for (int ee = energy_range - 1; ee > entropy_peak; ee--) {
       if (sample_histogram[ee] != 0) {
         highest_energy = ee;
@@ -282,16 +295,21 @@ double network_simulation::fractional_sample_error(const double beta_cap) const 
       }
     }
   }
+  // the mean energy we care about
   const int mean_energy = (highest_energy + lowest_energy) / 2;
 
-  if (highest_energy == lowest_energy) return 1;
-
+  // sum up the fractional error in sample counts with appropriate boltzmann factors
   long double error = 0;
-  long double normalization = 0;
+  long double normalization = 0; // this is the partition function
   for (int ee = lowest_energy; ee < highest_energy; ee++) {
     if (sample_histogram[ee] != 0) {
-      const long double boltzmann_factor
-        = exp(ln_dos[ee] - ln_dos[mean_energy] - (ee - mean_energy) * beta_cap);
+      // offset ln_dos[ee] and the energy ee by their values at the mean energy
+      //   we care about in order to avoid numerical overflows
+      // this offset amounts to multiplying both (error) and (normalization) by
+      //   a constant factor, which means that it does not affect (error/normalization)
+      const double ln_dos_ee = ln_dos[ee] - ln_dos[mean_energy];
+      const double energy = ee - mean_energy;
+      const long double boltzmann_factor = exp(ln_dos_ee - energy * beta_cap);
       error += boltzmann_factor/sqrt(sample_histogram[ee]);
       normalization += boltzmann_factor;
     }
@@ -303,12 +321,11 @@ double network_simulation::fractional_sample_error(const double beta_cap) const 
 // compute density of states and appropriate energy weights from the transition matrix
 void network_simulation::compute_dos_and_weights_from_transitions(const double beta_cap) {
 
-  ln_dos = vector<double>(energy_range, 0);
-  ln_weights = vector<double>(energy_range, 1);
-
+  // keep track of the maximal value of ln_dos
   double max_ln_dos = 0;
 
-  // sweep across energies to construct the density of states
+  // sweep across all energies to construct the density of states
+  ln_dos[0] = 0; // seed a value of ln_dos for the sweep
   for (int ee = 1; ee < energy_range; ee++) {
 
     ln_dos[ee] = ln_dos[ee-1];
@@ -333,54 +350,64 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double b
 
   }
 
+  // subtract off the maximal value of ln_dos from the entire array,
+  //   which normalizes the density of states to 1 at the entropy peak
   for (int ee = 0; ee < energy_range; ee++) {
     ln_dos[ee] -= max_ln_dos;
   }
 
   if (beta_cap > 0) {
 
-    int smallest_seen_energy = 0;
+    // if we care about positive temperatures, then we are interested in low energies
+    // identify the lowest energy we have seen
+    int lowest_seen_energy = 0;
     for (int ee = 0; ee < energy_range; ee++) {
       if (energy_histogram[ee] != 0) {
-        smallest_seen_energy = ee;
+        lowest_seen_energy = ee;
         break;
       }
     }
 
     // in the relevant range of observed energies, set weights appropriately
-    for (int ee = entropy_peak; ee > smallest_seen_energy; ee--) {
+    for (int ee = entropy_peak; ee > lowest_seen_energy; ee--) {
       ln_weights[ee] = -ln_dos[ee];
     }
-    // below all observed energies use weights fixed at an inverse temperature beta_cap
-    for (int ee = smallest_seen_energy; ee >= 0; ee--) {
-      ln_weights[ee] = (-ln_dos[smallest_seen_energy]
-                        - abs(smallest_seen_energy - ee) * beta_cap);
+    // below all observed energies, use weights fixed at an inverse temperature beta_cap
+    for (int ee = lowest_seen_energy; ee >= 0; ee--) {
+      ln_weights[ee] = (-ln_dos[lowest_seen_energy]
+                        - abs(lowest_seen_energy - ee) * beta_cap);
     }
-    // above the entropy peak, use flat (zero beta) weights
+    // as we don't care about energies above the entropy peak,
+    //   we don't want to spend more time on them than we need to,
+    //   so use flat (zero beta, infinite temperature) weights at these energies
     for (int ee = energy_range - 1; ee > entropy_peak; ee--) {
       ln_weights[ee] = -ln_dos[entropy_peak];
     }
 
   } else { // if beta_cap < 0
 
-    int largest_seen_energy = energy_range;
+    // if we care about negative temperatures, then we are interested in high energies
+    // identify the highest energy we have seen
+    int highest_seen_energy = energy_range;
     for (int ee = energy_range - 1; ee >= 0; ee++) {
       if (energy_histogram[ee] != 0) {
-        largest_seen_energy = ee;
+        highest_seen_energy = ee;
         break;
       }
     }
 
     // in the relevant range of observed energies, set weights appropriately
-    for (int ee = entropy_peak; ee < largest_seen_energy; ee++) {
+    for (int ee = entropy_peak; ee < highest_seen_energy; ee++) {
       ln_weights[ee] = -ln_dos[ee];
     }
-    // above all observed energies use weights fixed at an inverse temperature beta_cap
-    for (int ee = largest_seen_energy; ee < energy_range; ee++) {
-      ln_weights[ee] = (-ln_dos[largest_seen_energy]
-                        - abs(largest_seen_energy - ee) * beta_cap);
+    // above all observed energies, use weights fixed at an inverse temperature beta_cap
+    for (int ee = highest_seen_energy; ee < energy_range; ee++) {
+      ln_weights[ee] = (-ln_dos[highest_seen_energy]
+                        - abs(highest_seen_energy - ee) * beta_cap);
     }
-    // below the entropy peak, use flat (zero beta) weights
+    // as we don't care about energies below the entropy peak,
+    //   we don't want to spend more time on them than we need to,
+    //   so use flat (zero beta, infinite temperature) weights at these energies
     for (int ee = 0; ee < entropy_peak; ee++) {
       ln_weights[ee] = -ln_dos[entropy_peak];
     }
@@ -391,13 +418,14 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double b
 
 // compute density of states from the energy histogram
 void network_simulation::compute_dos_from_energy_histogram() {
-  ln_dos = vector<double>(energy_range);
-
+  // keep track of the maximal value of ln_dos
   double max_ln_dos = 0;
   for (int ee = 0; ee < energy_range; ee++) {
     ln_dos[ee] = log(energy_histogram[ee]) - ln_weights[ee];
     max_ln_dos = max(ln_dos[ee], max_ln_dos);
   }
+  // subtract off the maximal value of ln_dos from the entire array,
+  //   which normalizes the density of states to 1 at the entropy peak
   for (int ee = 0; ee < energy_range; ee++) {
     ln_dos[ee] -= max_ln_dos;
   }
@@ -412,13 +440,17 @@ void network_simulation::print_patterns() const {
   const int energy_width = log10(network.max_energy) + 2;
   const int pattern_number = patterns.size();
 
-  // make list of energies
+  // make list of the pattern energies
   vector<int> energies(pattern_number);
   for (int pp = 0; pp < pattern_number; pp++) {
     energies[pp] = energy(patterns[pp]);
   }
+
+  // sort the pattern energies
   vector<int> sorted_energies = energies;
   sort(sorted_energies.begin(), sorted_energies.end());
+
+  // printed[pp]: have we printed pattern number pp?
   vector<bool> printed(pattern_number,false);
 
   // print patterns in order of decreasing energy
@@ -439,7 +471,8 @@ void network_simulation::print_patterns() const {
   }
 }
 
-// print energy histogram, sample histogram, and density of states
+// print each observed energy, as well as the values of
+//   the energy histogram, sample histogram, and density of states at that energy
 void network_simulation::print_energy_data() const {
   cout << "energy observations samples log10_dos" << endl;
   const int energy_width = log10(network.max_energy) + 2;
