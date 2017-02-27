@@ -23,7 +23,7 @@ int state_distance(const vector<bool>& s1, const vector<bool>& s2) {
   return distance;
 }
 
-// generate random state
+// generate a random state
 vector<bool> random_state(const int nodes, uniform_real_distribution<double>& rnd,
                           mt19937_64& generator) {
   vector<bool> state(nodes);
@@ -35,6 +35,8 @@ vector<bool> random_state(const int nodes, uniform_real_distribution<double>& rn
 
 // make a random change to a given state using a random number on [0,1)
 vector<bool> random_change(const vector<bool>& state, const double random) {
+  // pick a node determined by the random number,
+  // and construct a new state in which that node is flipped
   const int node = floor(random*state.size());
   vector<bool> new_state = state;
   new_state[node] = !new_state[node];
@@ -43,6 +45,7 @@ vector<bool> random_change(const vector<bool>& state, const double random) {
 
 // hopfield network constructor
 hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
+  // number of nodes in network
   nodes = patterns[0].size();
 
   // generate interaction matrix from patterns
@@ -53,13 +56,15 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
     for (int jj = 0; jj < nodes; jj++) {
       if (jj == ii) continue;
       for (int pp = 0, size = patterns.size(); pp < size; pp++) {
-        const int coupling = (2*patterns[pp][ii]-1)*(2*patterns[pp][jj]-1);
-        couplings[ii][jj] += coupling;
+        const int pattern_contribution = (2*patterns[pp][ii]-1)*(2*patterns[pp][jj]-1);
+        couplings[ii][jj] += pattern_contribution;
       }
     }
   }
 
   // determine maximum energy achievable by network
+  // as a heuristic, use 2*max_p(|E_p|), where E_p is the energy of pattern p
+  // TODO: use a better estimate of the minimum/maximum energy
   max_energy = 0;
   for (int pp = 0, size = patterns.size(); pp < size; pp++) {
     int pattern_energy = 0;
@@ -72,6 +77,8 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
     max_energy = max(-2*pattern_energy, max_energy);
   }
 
+  // determine the maximum energy change possible in one move, as well as
+  //   the energy resolution (energy_scale) needed to keep track of all energies
   max_energy_change = 0;
   energy_scale = 2*max_energy;
   for (int ii = 0; ii < nodes; ii++) {
@@ -86,8 +93,10 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
 };
 
 // energy of the network in a given state
-// note: this energy is a factor of (nodes/energy_scale) greater
-//   than the regular definition, in addition to being shifted up a bit
+// note: this energy is equal to the "actual" energy (by the normal definition)
+//       multiplied by a factor of (nodes/energy_scale),
+//       and shifted down by a small, but constant amount determined
+//       by our energy resolution
 int hopfield_network::energy(const vector<bool>& state) const {
   int energy = 0;
   for (int ii = 0; ii < nodes; ii++) {
@@ -98,17 +107,21 @@ int hopfield_network::energy(const vector<bool>& state) const {
   return (energy + max_energy) / energy_scale;
 }
 
-
+// print coupling matrix
 void hopfield_network::print_couplings() const {
-  cout << "coupling matrix:" << endl;
+  // determin the largest coupling constant, which tells us how wide to make
+  // the columns of the matrix
   int largest_coupling = 0;
   for (int ii = 0; ii < nodes; ii++) {
     for (int jj = 0; jj < nodes; jj++) {
       largest_coupling = max(abs(couplings[ii][jj]), largest_coupling);
     }
   }
-
+  // matrix column width
   const int width = log10(largest_coupling) + 2;
+
+  // print the matrix
+  cout << "coupling matrix:" << endl;
   for (int ii = 0; ii < nodes; ii++) {
     for (int jj = 0; jj < nodes; jj++) {
       cout << setw(width) << couplings[ii][jj] << " ";
@@ -120,6 +133,7 @@ void hopfield_network::print_couplings() const {
 // network simulation constructor
 network_simulation::network_simulation(const vector<vector<bool>>& patterns,
                                        const vector<bool>& initial_state) :
+  // set patterns, construct network
   patterns(patterns),
   network(hopfield_network(patterns)),
   energy_range(2*network.max_energy/network.energy_scale),
@@ -136,12 +150,12 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
 // Access methods for histograms and matrices
 // ---------------------------------------------------------------------------------------
 
-// number of transitions from a given energy with a specified energy change
+// number of attempted transitions from a given energy with a specified energy change
 int network_simulation::transitions(const int energy, const int energy_change) const {
   return energy_transitions[energy][energy_change + max_de];
 }
 
-// number of transitions from a given energy to any other energy
+// number of attempted transitions from a given energy into any other energy
 int network_simulation::transitions_from(const int energy) const {
   int sum = 0;
   for (int de = -max_de; de <= max_de; de++) {
@@ -150,7 +164,8 @@ int network_simulation::transitions_from(const int energy) const {
   return sum;
 }
 
-// actual transition matrix
+// elements of the actual normalized transition matrix:
+//   the probability of moving from a given initial energy into a specific final energy
 double network_simulation::transition_matrix(const int final_energy,
                                              const int initial_energy) const {
   const int energy_change = final_energy - initial_energy;
@@ -167,7 +182,9 @@ double network_simulation::transition_matrix(const int final_energy,
 // Methods used in simulation
 // ---------------------------------------------------------------------------------------
 
-// reset all histograms and the visit log of visited energies
+// initialize all histograms:
+//   energy histogram, visit log, sample histogram,
+//   state histograms, distance histograms, energy transitions
 void network_simulation::initialize_histograms() {
   energy_histogram = vector<unsigned long>(energy_range, 0);
   visit_log = vector<bool>(energy_range, true);
@@ -183,22 +200,24 @@ void network_simulation::initialize_histograms() {
   }
 }
 
-// update histograms with an observation of a given energy
+// update histograms with an observation
 void network_simulation::update_energy_histogram(const int energy) {
   energy_histogram[energy]++;
 }
+
 void network_simulation::update_state_histograms(const int energy) {
   for (int ii = 0; ii < network.nodes; ii++) {
     state_histograms[energy][ii] += state[ii];
   }
 }
-void network_simulation::update_distance_histograms(const int energy) {
+
+void network_simulation::update_distance_histograms(const vector<boo>& state,
+                                                    const int energy) {
   for (int pp = 0, size = patterns.size(); pp < size; pp++) {
     distance_histograms[energy][pp] += state_distance(state,patterns[pp]);
   }
 }
 
-// update sample histogram
 void network_simulation::update_sample_histogram(const int new_energy, const int old_energy) {
   if (!visit_log[new_energy]) {
     visit_log[new_energy] = true;
@@ -231,7 +250,6 @@ void network_simulation::update_sample_histogram(const int new_energy, const int
   }
 }
 
-// update transition matrix
 void network_simulation::add_transition(const int energy, const int energy_change) {
   energy_transitions[energy][energy_change + max_de]++;
 }
@@ -277,7 +295,7 @@ double network_simulation::fractional_sample_error(const double beta_cap) const 
 }
 
 
-// compute density of states and weight array from transition matrix
+// compute density of states and appropriate energy weights from the transition matrix
 void network_simulation::compute_dos_and_weights_from_transitions(const double beta_cap) {
 
   ln_dos = vector<double>(energy_range, 0);
@@ -384,7 +402,7 @@ void network_simulation::compute_dos_from_energy_histogram() {
 // Printing methods
 // ---------------------------------------------------------------------------------------
 
-// print simulation patterns
+// print patterns defining the simulated network
 void network_simulation::print_patterns() const {
   const int energy_width = log10(network.max_energy) + 2;
   const int pattern_number = patterns.size();

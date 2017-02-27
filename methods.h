@@ -10,7 +10,7 @@ int gcd(const int a, const int b);
 // distance between two states
 int state_distance(const vector<bool>& s1, const vector<bool>& s2);
 
-// generate random state
+// generate a random state
 vector<bool> random_state(const int nodes, uniform_real_distribution<double>& rnd,
                           mt19937_64& generator);
 
@@ -19,20 +19,32 @@ vector<bool> random_change(const vector<bool>& state, const double random);
 
 struct hopfield_network {
 
+  // number of nodes in network
   int nodes;
+
+  // coupling constants between nodes
   vector<vector<int>> couplings;
 
+  // energy resolution necessary to keep track of all distinct energies
   int energy_scale;
+
+  // maximum energy of the network, and maximum by which
+  //   this energy can change by flipping one spin
+  // in units of energy_scale
   int max_energy;
   int max_energy_change;
 
+  // hopfield network constructor
   hopfield_network(const vector<vector<bool>>& patterns);
 
   // energy of the network in a given state
-  // note: this energy is a factor of (nodes/energy_scale) greater
-  //   than the regular definition, in addition to being shifted up a bit
+  // note: this energy is equal to the "actual" energy (by the normal definition)
+  //       multiplied by a factor of (nodes/energy_scale),
+  //       and shifted down by a small, but constant amount determined
+  //       by our energy resolution
   int energy(const vector<bool>& state) const;
 
+  // print coupling matrix
   void print_couplings() const;
 
 };
@@ -40,38 +52,59 @@ struct hopfield_network {
 // network simulation object
 struct network_simulation {
 
+  // patterns used to define the network
   const vector<vector<bool>> patterns;
+
+  // the network itself
   const hopfield_network network;
+
+  // the energy range, and the max amount by which the energy can change in one move
   const int energy_range;
   const int max_de;
 
-  // energy at which entropy is maximized
+  // the energy at which entropy is maximized
+  // i.e. the most common energy in the space of all states
   int entropy_peak;
 
+  // the current network state stored in simulation
   vector<bool> state;
+
+  // histogram containing the number of times we have seen every energy
   vector<unsigned long> energy_histogram;
+
+  // stores the number of times a node has been +1 at each energy
+  // indexed by (energy, node)
+  // up to the distinction between bools and +/-1, dividing state_histogram[ee][ii]
+  //   by energy_histogram[ee] tells us the mean state of node ii at an energy ee
   vector<vector<unsigned long>> state_histograms;
+
+  // stores the sum of all distances from every pattern at each energy
+  // indexed by (energy, pattern)
+  // dividing distance_histogram[ee][pp] by energy_histogram[ee] tells us
+  //   the mean distance from pattern pp at an energy ee
   vector<vector<unsigned long>> distance_histograms;
 
   // the transition matrix tells us how many times we have moved
   //   from a given energy with a specified energy difference
   vector<vector<unsigned long>> energy_transitions;
 
-  // have we visited this (negative) energy at least once since
-  //   the last observation of states with energy >= 0?
+  // visit_log[ee] answers the question: have we visited the energy ee
+  // at least once since the last observation of a maximual entropy state?
   vector<bool> visit_log;
-  // number of independent samples of a given (negative) energy;
+
+  // stores the number of independent samples of any energy
   // two samples of a given energy are considered independent if
-  //   we have visited states with energy >= 0 between the samples
+  //   we have made a visit to the maximal entropy state between them
   vector<unsigned long> sample_histogram;
 
-  // logarithm of weights determining the transition probability
-  //   between energies during simulation
+  // logarithm of the weights which determine the probability
+  //   of accepting a move between two energies during simulation
   vector<double> ln_weights;
 
-  // logarithm of density of states
+  // logarithm of the (unnormalized) density of states
   vector<double> ln_dos;
 
+  // constructor for the network simulation object
   network_simulation(const vector<vector<bool>>& patterns,
                      const vector<bool>& initial_state);
 
@@ -79,43 +112,41 @@ struct network_simulation {
   // Access methods for histograms and matrices
   // -------------------------------------------------------------------------------------
 
-  // number of transitions from a given energy with a specified energy change
+  // number of attempted transitions from a given energy with a specified energy change
   int transitions(const int energy, const int energy_change) const;
 
-  // number of transitions from a given energy to any other energy
+  // number of attempted transitions from a given energy into any other energy
   int transitions_from(const int energy) const;
 
-  // actual transition matrix
-  double transition_matrix(const int to, const int from) const;
+  // elements of the actual normalized transition matrix:
+  //   the probability of moving from a given initial energy into a specific final energy
+  double transition_matrix(const int final_energy, const int initial_energy) const;
 
   // -------------------------------------------------------------------------------------
   // Methods used in simulation
   // -------------------------------------------------------------------------------------
 
-  // energy of a given state
+  // the energy of a given state
   int energy(const vector<bool>& state) const { return network.energy(state); };
   int energy() const { return energy(state); };
 
   // initialize all histograms:
-  //   energy histogram, sample histogram, state histograms, energy transition
+  //   energy histogram, visit log, sample histogram,
+  //   state histograms, distance histograms, energy transitions
   void initialize_histograms();
 
-  // update histograms with an energy observation (presumably of the current state)
+  // update histograms with an observation
   void update_energy_histogram(const int energy);
   void update_state_histograms(const int energy);
-  void update_distance_histograms(const int energy);
-
-  // update sample histogram
+  void update_distance_histograms(const vector<boo>& state, const int energy);
   void update_sample_histogram(const int new_energy, const int old_energy);
-
-  // update transition matrix
   void add_transition(const int energy, const int energy_change);
 
   // expectation value of fractional sample error at a given inverse temperature
   // WARNING: assumes that the density of states is up to date
   double fractional_sample_error(const double beta) const;
 
-  // compute density of states and weight array from transition matrix
+  // compute density of states and appropriate energy weights from the transition matrix
   void compute_dos_and_weights_from_transitions(const double beta);
 
   // compute density of states from the energy histogram
@@ -125,7 +156,7 @@ struct network_simulation {
   // Printing methods
   // -------------------------------------------------------------------------------------
 
-  // print simulation patterns
+  // print patterns defining the simulated network
   void print_patterns() const;
 
   // print energy histogram, sample histogram, and density of states

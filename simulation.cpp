@@ -61,7 +61,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     ("fixed_temp",
      po::value<bool>(&fixed_temp)->default_value(false)->implicit_value(true),
      "run a fixed-temperature simulation")
-    ("beta_cap", po::value<int>(&beta_cap_int)->default_value(10),
+    ("beta_cap", po::value<int>(&beta_cap_int)->default_value(1),
      "inverse temperature scale of interest in simulation")
     ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
      "log10 of the number of iterations to simulate")
@@ -303,7 +303,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     ns.update_energy_histogram(new_energy);
     ns.update_sample_histogram(new_energy, old_energy);
     ns.update_state_histograms(new_energy);
-    ns.update_distance_histograms(new_energy);
+    ns.update_distance_histograms(ns.state, new_energy);
     old_energy = new_energy;
   }
 
