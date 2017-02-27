@@ -50,9 +50,8 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   int log10_iterations;
   bool all_temps;
-  bool inf_temp;
   bool fixed_temp;
-  double temp_scale;
+  int beta_cap_int;
 
   po::options_description simulation_options("General simulation options",
                                              help_text_length);
@@ -62,10 +61,8 @@ int main(const int arg_num, const char *arg_vec[]) {
     ("fixed_temp",
      po::value<bool>(&fixed_temp)->default_value(false)->implicit_value(true),
      "run a fixed-temperature simulation")
-    ("inf_temp", po::value<bool>(&inf_temp)->default_value(false)->implicit_value(true),
-     "run an infinite temperature simulation")
-    ("temp_scale", po::value<double>(&temp_scale)->default_value(0.1,"0.1"),
-     "temperature scale of interest in simulation")
+    ("beta_cap", po::value<int>(&beta_cap_int)->default_value(10),
+     "inverse temperature scale of interest in simulation")
     ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
      "log10 of the number of iterations to simulate")
     ;
@@ -81,7 +78,7 @@ int main(const int arg_num, const char *arg_vec[]) {
      "log10 of the number of iterations in one initialization cycle")
     ("sample_error", po::value<double>(&target_sample_error)->default_value(0.01,"0.01"),
      "the transition matrix initialization routine terminates when it achieves"
-     " this expected fractional sample error at a temperature temp_scale")
+     " this expected fractional sample error at an inverse temperature beta_cap")
     ("transition_factor", po::value<int>(&tpff)->default_value(1),
      "fudge factor in computation of move acceptance probability"
      " during transition matrix initialization")
@@ -107,9 +104,6 @@ int main(const int arg_num, const char *arg_vec[]) {
   // by default, use the same number of patterns as nodes
   if (pattern_number == 0) pattern_number = nodes;
 
-  // default to an all-temperature simulation
-  if (!all_temps && !fixed_temp && !inf_temp) all_temps = true;
-
   // -------------------------------------------------------------------------------------
   // Process and run sanity checks on inputs
   // -------------------------------------------------------------------------------------
@@ -121,11 +115,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   // we can specify either nodes, or a pattern file; not both
   assert(nodes || !pattern_file.empty());
 
-  // we can only have one temperature option
-  assert(all_temps + fixed_temp + inf_temp == 1);
-
-  // the temperature scale cannot be zero
-  assert(temp_scale != 0);
+  // we must run either an all-temperature or a fixed-temperature simulation
+  assert(all_temps + fixed_temp == 1);
 
   // if we specified a pattern file, make sure it exists
   assert(pattern_file.empty() || fs::exists(pattern_file));
@@ -177,7 +168,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   network_simulation ns(patterns, random_state(nodes, rnd, generator));
 
-  // make hash for initialization parameters
+  // make pattern hash
   const int hash = [&]() -> int {
     size_t running_hash = 0;
     for (int pp = 0, size = patterns.size(); pp < size; pp++) {
@@ -185,17 +176,17 @@ int main(const int arg_num, const char *arg_vec[]) {
         bo::hash_combine(running_hash, size_t(patterns[pp][nn]));
       }
     }
-    bo::hash_combine(running_hash, size_t(temp_scale));
     return running_hash;
   }();
 
-  // adjust temperature scale to be compatible with the energy units used in simulation
-  temp_scale *= double(nodes)/ns.network.energy_scale;
+  // set inverse temperature scale the inverse units of our energies
+  const double beta_cap = double(beta_cap_int*ns.network.energy_scale)/nodes;
 
   cout << endl
        << "maximum energy: " << ns.network.max_energy << endl
        << "maximum energy change: " << ns.network.max_energy_change << endl
        << "energy scale: " << ns.network.energy_scale << endl
+       << "beta cap: " << beta_cap_int << endl
        << endl;
 
   if (debug) {
@@ -210,16 +201,11 @@ int main(const int arg_num, const char *arg_vec[]) {
   // -------------------------------------------------------------------------------------
 
   // initialize weight array
-  if (inf_temp) {
-
-    cout << "starting an infinite temperature simulation" << endl;
-    ns.ln_weights = vector<double>(ns.energy_range, 1);
-
-  } else if (fixed_temp) {
+  if (fixed_temp) {
 
     cout << "starting a fixed temperature simulation" << endl;
     for (int ee = 0; ee < ns.energy_range; ee++) {
-      ns.ln_weights[ee] = -ee/temp_scale;
+      ns.ln_weights[ee] = -ee * beta_cap;
     }
 
   } else if (all_temps) {
@@ -257,8 +243,8 @@ int main(const int arg_num, const char *arg_vec[]) {
             = (double(ns.transitions(proposed_energy, -energy_change) + tpff)
                / (new_norm + tpff));
 
-          const double acceptance_probability = max(forward_flux/backward_flux,
-                                                    exp(-energy_change/temp_scale));
+          const double acceptance_probability = max(forward_flux / backward_flux,
+                                                    exp(-energy_change * beta_cap));
 
           if (rnd(generator) < acceptance_probability) {
             ns.state = proposed_state;
@@ -273,10 +259,10 @@ int main(const int arg_num, const char *arg_vec[]) {
         old_energy = new_energy;
       }
 
-      ns.compute_dos_and_weights_from_transitions(temp_scale);
+      ns.compute_dos_and_weights_from_transitions(beta_cap);
 
       cycles++;
-      sample_error = ns.fractional_sample_error(temp_scale);
+      sample_error = ns.fractional_sample_error(beta_cap);
       cout << fixed << setprecision(ceil(-log10(target_sample_error)) + 2)
            << sample_error << " " << cycles << endl;
 

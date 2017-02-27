@@ -113,12 +113,12 @@ struct network_simulation {
   // update transition matrix
   void add_transition(const int energy, const int energy_change);
 
-  // expectation value of fractional sample error at a given temperature
+  // expectation value of fractional sample error at a given inverse temperature
   // WARNING: assumes that the density of states is up to date
-  double fractional_sample_error(const double temp) const;
+  double fractional_sample_error(const double beta) const;
 
   // compute density of states and weight array from transition matrix
-  void compute_dos_and_weights_from_transitions(const double temp_cap);
+  void compute_dos_and_weights_from_transitions(const double beta);
 
   // compute density of states from the energy histogram
   void compute_dos_from_energy_histogram();

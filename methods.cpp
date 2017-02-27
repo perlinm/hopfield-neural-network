@@ -234,14 +234,14 @@ void network_simulation::add_transition(const int energy, const int energy_chang
   energy_transitions[energy][energy_change + max_de]++;
 }
 
-// expectation value of fractional sample error at a given temperature
+// expectation value of fractional sample error at a given inverse temperature
 // WARNING: assumes that the density of states is up to date
-double network_simulation::fractional_sample_error(const double temp) const {
+double network_simulation::fractional_sample_error(const double beta_cap) const {
   double error = 0;
   double normalization = 0;
   for (int ee = 0; ee < energy_range; ee++) {
     if (sample_histogram[ee] != 0) {
-      const double boltzmann_factor = exp(ln_dos[ee] - ee/temp);
+      const double boltzmann_factor = exp(ln_dos[ee] - (ee - entropy_peak) * beta_cap);
       error += boltzmann_factor/sqrt(sample_histogram[ee]);
       normalization += boltzmann_factor;
     }
@@ -251,7 +251,7 @@ double network_simulation::fractional_sample_error(const double temp) const {
 
 
 // compute density of states and weight array from transition matrix
-void network_simulation::compute_dos_and_weights_from_transitions(const double temp_cap) {
+void network_simulation::compute_dos_and_weights_from_transitions(const double beta_cap) {
 
   ln_dos = vector<double>(energy_range, 0);
   ln_weights = vector<double>(energy_range, 1);
@@ -287,7 +287,7 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double t
     ln_dos[ee] -= max_ln_dos;
   }
 
-  if (temp_cap > 0) {
+  if (beta_cap > 0) {
 
     int smallest_seen_energy = 0;
     for (int ee = 0; ee < energy_range; ee++) {
@@ -301,17 +301,17 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double t
     for (int ee = entropy_peak; ee > smallest_seen_energy; ee--) {
       ln_weights[ee] = -ln_dos[ee];
     }
-    // below all observed energies use weights fixed at the temperature cap
+    // below all observed energies use weights fixed at an inverse temperature beta_cap
     for (int ee = smallest_seen_energy; ee >= 0; ee--) {
       ln_weights[ee] = (-ln_dos[smallest_seen_energy]
-                        - abs(smallest_seen_energy - ee) / temp_cap);
+                        - abs(smallest_seen_energy - ee) * beta_cap);
     }
-    // above the entropy peak, use flat (infinite temperature) weights
+    // above the entropy peak, use flat (zero beta) weights
     for (int ee = energy_range - 1; ee > entropy_peak; ee--) {
       ln_weights[ee] = -ln_dos[entropy_peak];
     }
 
-  } else { // if temp_cap < 0
+  } else { // if beta_cap < 0
 
     int largest_seen_energy = energy_range;
     for (int ee = energy_range - 1; ee >= 0; ee++) {
@@ -325,12 +325,12 @@ void network_simulation::compute_dos_and_weights_from_transitions(const double t
     for (int ee = entropy_peak; ee < largest_seen_energy; ee++) {
       ln_weights[ee] = -ln_dos[ee];
     }
-    // above all observed energies use weights fixed at the temperature cap
+    // above all observed energies use weights fixed at an inverse temperature beta_cap
     for (int ee = largest_seen_energy; ee < energy_range; ee++) {
       ln_weights[ee] = (-ln_dos[largest_seen_energy]
-                        - abs(largest_seen_energy - ee) / temp_cap);
+                        - abs(largest_seen_energy - ee) * beta_cap);
     }
-    // below the entropy peak, use flat (infinite temperature) weights
+    // below the entropy peak, use flat (zero beta) weights
     for (int ee = 0; ee < entropy_peak; ee++) {
       ln_weights[ee] = -ln_dos[entropy_peak];
     }
