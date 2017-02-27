@@ -1,6 +1,8 @@
 #include <iostream> // for standard output
 #include <iomanip> // for io manipulation (e.g. setw)
 #include <random> // for randomness
+#include <cassert> // for assertions
+#include <algorithm> // for sort method
 
 #include "methods.h"
 
@@ -168,7 +170,7 @@ double network_simulation::transition_matrix(const int final_energy,
 // reset all histograms and the visit log of visited energies
 void network_simulation::initialize_histograms() {
   energy_histogram = vector<unsigned long>(energy_range, 0);
-  visit_log = vector<bool>(energy_range, false);
+  visit_log = vector<bool>(energy_range, true);
   sample_histogram = vector<unsigned long>(energy_range, 0);
   state_histograms = vector<vector<unsigned long>>(energy_range);
   distance_histograms = vector<vector<unsigned long>>(energy_range);
@@ -237,11 +239,36 @@ void network_simulation::add_transition(const int energy, const int energy_chang
 // expectation value of fractional sample error at a given inverse temperature
 // WARNING: assumes that the density of states is up to date
 double network_simulation::fractional_sample_error(const double beta_cap) const {
-  double error = 0;
-  double normalization = 0;
-  for (int ee = 0; ee < energy_range; ee++) {
+  assert(beta_cap != 0);
+
+  int lowest_energy;
+  int highest_energy;
+  if (beta_cap > 0) { // low energies
+    highest_energy = entropy_peak;
+    for (int ee = 0; ee < entropy_peak; ee++) {
+      if (sample_histogram[ee] != 0) {
+        lowest_energy = ee;
+        break;
+      }
+    }
+
+  } else { // high energies
+    lowest_energy = entropy_peak;
+    for (int ee = energy_range - 1; ee > entropy_peak; ee--) {
+      if (sample_histogram[ee] != 0) {
+        highest_energy = ee;
+        break;
+      }
+    }
+  }
+  const int mean_energy = (highest_energy + lowest_energy) / 2;
+
+  long double error = 1;
+  long double normalization = 1;
+  for (int ee = lowest_energy; ee < highest_energy; ee++) {
     if (sample_histogram[ee] != 0) {
-      const double boltzmann_factor = exp(ln_dos[ee] - (ee - entropy_peak) * beta_cap);
+      const long double boltzmann_factor
+        = exp(ln_dos[ee] - ln_dos[mean_energy] - (ee - mean_energy) * beta_cap);
       error += boltzmann_factor/sqrt(sample_histogram[ee]);
       normalization += boltzmann_factor;
     }
@@ -359,13 +386,31 @@ void network_simulation::compute_dos_from_energy_histogram() {
 
 // print simulation patterns
 void network_simulation::print_patterns() const {
-  cout << "(energy) pattern" << endl;
   const int energy_width = log10(network.max_energy) + 2;
-  for (int ii = 0, size = patterns.size(); ii < size; ii++) {
+  const int pattern_number = patterns.size();
+
+  // make list of energies
+  vector<int> energies(pattern_number);
+  for (int pp = 0; pp < pattern_number; pp++) {
+    energies[pp] = energy(patterns[pp]);
+  }
+  vector<int> sorted_energies = energies;
+  sort(sorted_energies.begin(), sorted_energies.end());
+  vector<bool> printed(pattern_number,false);
+
+  // print patterns in order of decreasing energy
+  cout << "(energy) pattern" << endl;
+  for (int ss = pattern_number - 1; ss >= 0; ss--) {
     cout << "(" << setw(energy_width)
-         << energy(patterns[ii]) * network.energy_scale - network.max_energy << ") ";
-    for (int jj = 0; jj < network.nodes; jj++) {
-      cout << patterns[ii][jj] << " ";
+         << sorted_energies[ss] * network.energy_scale - network.max_energy << ")";
+    for (int pp = 0; pp < pattern_number; pp++) {
+      if (energies[pp] == sorted_energies[ss] && !printed[pp]) {
+        for (int ii = 0; ii < network.nodes; ii++) {
+          cout << " " << patterns[pp][ii];
+        }
+        printed[pp] = true;
+        break;
+      }
     }
     cout << endl;
   }
@@ -393,7 +438,7 @@ void network_simulation::print_energy_data() const {
 }
 
 // print expectation value of each spin spin at each energy
-void network_simulation::print_states() const {
+void network_simulation::print_expected_states() const {
   cout << "energy <s_1>, <s_2>, ..., <s_n>" << endl;
   const int energy_width = log10(network.max_energy) + 2;
   const int state_dec = 6;

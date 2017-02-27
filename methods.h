@@ -1,7 +1,5 @@
 #pragma once
 
-#include <iostream> // for standard output
-#include <iomanip> // for io manipulation (e.g. setw)
 #include <random> // for randomness
 
 using namespace std;
@@ -134,7 +132,7 @@ struct network_simulation {
   void print_energy_data() const;
 
   // print expectation value of each spin spin at each energy
-  void print_states() const;
+  void print_expected_states() const;
 
   // print expectation value of distances from each pattern at each energy
   void print_distances() const;

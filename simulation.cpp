@@ -201,7 +201,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   // -------------------------------------------------------------------------------------
 
   // initialize weight array
-  if (fixed_temp) {
+  if (fixed_temp || beta_cap == 0) {
 
     cout << "starting a fixed temperature simulation" << endl;
     for (int ee = 0; ee < ns.energy_range; ee++) {
@@ -274,6 +274,7 @@ int main(const int arg_num, const char *arg_vec[]) {
       cout << endl;
     }
 
+    ns.state = random_state(nodes, rnd, generator);
     ns.initialize_histograms();
     cout << "starting an all-temperature simulation" << endl << endl;
   }
@@ -311,7 +312,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   if (debug) {
     ns.print_energy_data();
     cout << endl;
-    ns.print_states();
+    ns.print_expected_states();
     cout << endl;
     ns.print_distances();
     cout << endl;
