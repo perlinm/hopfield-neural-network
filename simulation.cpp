@@ -57,10 +57,9 @@ int main(const int arg_num, const char *arg_vec[]) {
   po::options_description simulation_options("General simulation options",
                                              help_text_length);
   simulation_options.add_options()
-    ("all_temps", po::value<bool>(&all_temps)->default_value(false)->implicit_value(true),
+    ("all_T", po::value<bool>(&all_temps)->default_value(false)->implicit_value(true),
      "run an all-temperature simulation")
-    ("fixed_temp",
-     po::value<bool>(&fixed_temp)->default_value(false)->implicit_value(true),
+    ("fixed_T", po::value<bool>(&fixed_temp)->default_value(false)->implicit_value(true),
      "run a fixed-temperature simulation")
     ("beta_cap", po::value<double>(&beta_cap)->default_value(1),
      "maximum inverse temperature (equivalently, minimum temperature) scale"

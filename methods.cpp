@@ -63,7 +63,7 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
 
   // determine maximum energy achievable by network
   // as a heuristic, use 2*max_p(|E_p|), where E_p is the energy of pattern p
-  // TODO: use a better estimate of the minimum/maximum energy
+  // todo: use a better estimate of the minimum/maximum energy
   max_energy = 0;
   for (int pp = 0, size = patterns.size(); pp < size; pp++) {
     int pattern_energy = 0;
@@ -187,17 +187,17 @@ double network_simulation::transition_matrix(const int final_energy,
 //   energy histogram, visit log, sample histogram,
 //   state histograms, distance histograms, energy transitions
 void network_simulation::initialize_histograms() {
-  energy_histogram = vector<unsigned long>(energy_range, 0);
+  energy_histogram = vector<unsigned long long int>(energy_range, 0);
   visit_log = vector<bool>(energy_range, true);
-  sample_histogram = vector<unsigned long>(energy_range, 0);
-  state_histograms = vector<vector<unsigned long>>(energy_range);
-  distance_histograms = vector<vector<unsigned long>>(energy_range);
-  transition_histogram = vector<vector<unsigned long>>(energy_range);
+  sample_histogram = vector<unsigned long long int>(energy_range, 0);
+  state_histograms = vector<vector<unsigned long long int>>(energy_range);
+  distance_histograms = vector<vector<unsigned long long int>>(energy_range);
+  transition_histogram = vector<vector<unsigned long long int>>(energy_range);
   const int pattern_number = patterns.size();
   for (int ee = 0; ee < energy_range; ee++) {
-    state_histograms[ee] = vector<unsigned long>(network.nodes, 0);
-    distance_histograms[ee] = vector<unsigned long>(pattern_number, 0);
-    transition_histogram[ee] = vector<unsigned long>(2*max_de + 1, 0);
+    state_histograms[ee] = vector<unsigned long long int>(network.nodes, 0);
+    distance_histograms[ee] = vector<unsigned long long int>(pattern_number, 0);
+    transition_histogram[ee] = vector<unsigned long long int>(2*max_de + 1, 0);
   }
 }
 
@@ -292,7 +292,7 @@ void network_simulation::compute_dos_from_transitions() {
       flux_down_from_this_energy += transition_matrix(smaller_ee, ee);
     }
 
-    //
+    // todo: explain this
     if (flux_up_to_this_energy > 0 && flux_down_from_this_energy > 0) {
       ln_dos[ee] += log(flux_up_to_this_energy/flux_down_from_this_energy);
     }
