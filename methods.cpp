@@ -290,6 +290,10 @@ void network_simulation::compute_dos_from_transitions() {
     double flux_down_from_this_energy = 0;
     for (int smaller_ee = ee - max_de; smaller_ee < ee; smaller_ee++) {
       if (smaller_ee < 0) continue;
+      // we divide both normalized fluxes by the guess for the density of states at ee
+      //   in order to avoid potential numerical overflows (and reduce numerical error)
+      // as we will actually be interested in the ratio of these fluxes,
+      //   multiplying them both by a constant factor has no consequence
       flux_up_to_this_energy += (exp(ln_dos[smaller_ee] - ln_dos[ee])
                                  * transition_matrix(ee, smaller_ee));
       flux_down_from_this_energy += transition_matrix(smaller_ee, ee);
@@ -299,8 +303,7 @@ void network_simulation::compute_dos_from_transitions() {
     //   should be the same; if they are not, it is because our guess for
     //   the density of states was incorrect
     // we therefore multiply the density of states by the factor which would make
-    //   these fluxes equal, which is presicely the ratio of these fluxes
-    //   (see definition of flux_up)
+    //   these fluxes equal, which is presicely the ratio of the fluxes
     if (flux_up_to_this_energy > 0 && flux_down_from_this_energy > 0) {
       ln_dos[ee] += log(flux_up_to_this_energy/flux_down_from_this_energy);
     }
