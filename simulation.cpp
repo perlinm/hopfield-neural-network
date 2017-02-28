@@ -62,7 +62,8 @@ int main(const int arg_num, const char *arg_vec[]) {
      po::value<bool>(&fixed_temp)->default_value(false)->implicit_value(true),
      "run a fixed-temperature simulation")
     ("beta_cap", po::value<double>(&beta_cap)->default_value(1),
-     "inverse temperature scale of interest in simulation")
+     "maximum inverse temperature (equivalently, minimum temperature) scale"
+     " of interest in the simulation")
     ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
      "log10 of the number of iterations to simulate")
     ;
@@ -230,9 +231,9 @@ int main(const int arg_num, const char *arg_vec[]) {
   // -------------------------------------------------------------------------------------
 
   // initialize weight array
-  if (fixed_temp || beta_cap == 0) {
+  if (fixed_temp) {
 
-    cout << "starting a fixed temperature simulation" << endl;
+    cout << "starting a fixed temperature simulation" << endl << endl;
 
     // for a fixed (or infinite) temperature simulation, use boltzmann weights
     for (int ee = 0; ee < ns.energy_range; ee++) {
@@ -278,11 +279,21 @@ int main(const int arg_num, const char *arg_vec[]) {
             ns.state = proposed_state;
             new_energy = proposed_energy;
 
-          } else {
-            // accept the moves to higher energy states with some probability
+          } else { // accept the moves to higher energy states with some probability
+
+            // normalization factor for transitions from both energies
             const double old_norm = ns.transitions_from(old_energy);
             const double new_norm = ns.transitions_from(proposed_energy);
 
+            // compute the (normalized) flux of proposed moves forward and backward
+            //   between the current and proposed energies
+            // add fudge factors (tpff) which will make the rejection of transitions
+            //   more conservative when we have poor statistics (few counts)
+            //   in the transition histogram
+            // the effect of these fudge factors vanishes as the number of counts
+            //   in the transition matrix increases
+            // these fudge factors effectively prevent us from getting stuck
+            //   at low energies
             const double forward_flux
               = (double(ns.transitions(old_energy, energy_change) + tpff)
                  / (old_norm + tpff));
@@ -290,6 +301,17 @@ int main(const int arg_num, const char *arg_vec[]) {
               = (double(ns.transitions(proposed_energy, -energy_change) + tpff)
                  / (new_norm + tpff));
 
+            // in order to get good statistics on the transition matrix,
+            //   we wish to sample all energies as equally as we can
+            // if the forward flux F_{i->f} of proposed moves from E_i to E_f is,
+            //   say, twice the backwards flux F_{f->i}, then to sample E_i and E_f
+            //   equally we should reject half of the proposed moves from E_i to E_f
+            // in general, the acceptance probability to sample E_i and E_f equally
+            //   is F_{i->f} / F_{f->i}
+            // there is no reason, however, to have acceptance probabilities lower
+            //   than the ratio of boltzmann weights on E_i and E_f, as otherwise
+            //   we are spending more time sampling E_i (relative to E_f) than we would
+            //   at the minimum temperature of the simulation
             const double acceptance_probability = max(forward_flux / backward_flux,
                                                       exp(-energy_change * beta_cap));
 
