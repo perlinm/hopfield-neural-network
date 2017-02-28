@@ -1,0 +1,18 @@
+explain DOS bootstrap
+
+write to transition matrix and histogram files
+read in transition matrix from file
+
+identify relaxation into patterns
+
+make phase diagram
+
+compute:
+ configurational entropy
+ internal energy
+ heat capacity
+
+see how thermodynamics of the network changes if e.g.
+ all patterns are close
+ all patterns are far away from each other
+ patterns are clustered
