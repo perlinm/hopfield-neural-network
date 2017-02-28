@@ -209,12 +209,12 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   // number of iterations per initialization cycle
   const int iterations_per_cycle
-    = ns.network.nodes * ns.patterns.size() * pow(10, init_factor);
+    = ns.network.nodes * ns.pattern_number * pow(10, init_factor);
 
   // make a hash of the patterns to identify this network
   const int hash = [&]() -> int {
     size_t running_hash = 0;
-    for (int pp = 0, size = patterns.size(); pp < size; pp++) {
+    for (int pp = 0; pp < ns.pattern_number; pp++) {
       for (int nn = 0; nn < ns.network.nodes; nn++) {
         bo::hash_combine(running_hash, size_t(patterns[pp][nn]));
       }
@@ -264,7 +264,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     //   run the standard initialization routine
     if (true) {
 
-      cout << "initializing transition matrix for an all-temperature simulation..." << endl
+      cout << "starting initialization routine for an all-temperature simulation..." << endl
            << "sample_error cycle_number" << endl;
 
       // number of initialization cycles we have finished
@@ -355,7 +355,7 @@ int main(const int arg_num, const char *arg_vec[]) {
         // compute the expected fractional sample error at an inverse temperature beta_cap
         sample_error = ns.fractional_sample_error(beta_cap);
 
-        cout << fixed << setprecision(ceil(-log10(target_sample_error)) + 2)
+        cout << fixed << setprecision(ceil(-log10(target_sample_error)) + 3)
              << sample_error << " " << cycles << endl;
 
         // loop until we satisfy the end condition for initialization
@@ -387,7 +387,8 @@ int main(const int arg_num, const char *arg_vec[]) {
     ns.state = random_state(nodes, rnd, generator);
     ns.initialize_histograms();
 
-    cout << "starting an all-temperature simulation" << endl << endl;
+    cout << "initialization complute" << endl
+         << "starting the simulation" << endl << endl;
   }
 
   // -------------------------------------------------------------------------------------
@@ -415,11 +416,19 @@ int main(const int arg_num, const char *arg_vec[]) {
       new_energy = old_energy;
     }
 
-    // update all histograms (except the transition histogram used for initialization)
+    // update energy and sample histograms
     ns.update_energy_histogram(new_energy);
     ns.update_sample_histogram(new_energy, old_energy);
-    ns.update_state_histograms(new_energy);
-    ns.update_distance_histograms(ns.state, new_energy);
+
+    // update histograms which take O(X) time to update every X moves;
+    //   otherwise we will be asymptotically spending all of simulation
+    //   time on these updates
+    if (ii % ns.network.nodes == 0) {
+      ns.update_state_histograms(new_energy);
+      if (ii % ns.pattern_number == 0) {
+        ns.update_distance_histograms(ns.state, new_energy);
+      }
+    }
 
     // update the old energy
     old_energy = new_energy;
@@ -434,7 +443,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     ns.print_expected_states();
     cout << endl;
     ns.print_distances();
-    cout << endl;
+    cout << endl << endl;
   }
 
   cout << "simulation complete" << endl << endl;

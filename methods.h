@@ -52,8 +52,9 @@ struct hopfield_network {
 // network simulation object
 struct network_simulation {
 
-  // patterns used to define the network
+  // patterns used to construct the network, and the number of them
   const vector<vector<bool>> patterns;
+  const int pattern_number;
 
   // the network itself
   const hopfield_network network;

@@ -133,6 +133,7 @@ void hopfield_network::print_couplings() const {
 network_simulation::network_simulation(const vector<vector<bool>>& patterns,
                                        const vector<bool>& initial_state) :
   patterns(patterns),
+  pattern_number(patterns.size()),
   network(hopfield_network(patterns)),
   energy_range(2*network.max_energy/network.energy_scale),
   max_de(network.max_energy_change/network.energy_scale)
@@ -193,7 +194,6 @@ void network_simulation::initialize_histograms() {
   state_histograms = vector<vector<unsigned long long int>>(energy_range);
   distance_histograms = vector<vector<unsigned long long int>>(energy_range);
   transition_histogram = vector<vector<unsigned long long int>>(energy_range);
-  const int pattern_number = patterns.size();
   for (int ee = 0; ee < energy_range; ee++) {
     state_histograms[ee] = vector<unsigned long long int>(network.nodes, 0);
     distance_histograms[ee] = vector<unsigned long long int>(pattern_number, 0);
@@ -213,7 +213,7 @@ void network_simulation::update_state_histograms(const int energy) {
 
 void network_simulation::update_distance_histograms(const vector<bool>& state,
                                                     const int energy) {
-  for (int pp = 0, size = patterns.size(); pp < size; pp++) {
+  for (int pp = 0; pp < pattern_number; pp++) {
     distance_histograms[energy][pp] += state_distance(state,patterns[pp]);
   }
 }
@@ -457,7 +457,7 @@ double network_simulation::fractional_sample_error(const double beta_cap) const 
 // print patterns defining the simulated network
 void network_simulation::print_patterns() const {
   const int energy_width = log10(network.max_energy) + 2;
-  const int pattern_number = patterns.size();
+  const int index_width = log10(pattern_number) + 1;
 
   // make list of the pattern energies
   vector<int> energies(pattern_number);
@@ -473,12 +473,13 @@ void network_simulation::print_patterns() const {
   vector<bool> printed(pattern_number,false);
 
   // print patterns in order of decreasing energy
-  cout << "(energy) pattern" << endl;
+  cout << "(energy, index) pattern" << endl;
   for (int ss = pattern_number - 1; ss >= 0; ss--) {
     cout << "(" << setw(energy_width)
-         << sorted_energies[ss] * network.energy_scale - network.max_energy << ")";
+         << sorted_energies[ss] * network.energy_scale - network.max_energy << ", ";
     for (int pp = 0; pp < pattern_number; pp++) {
       if (energies[pp] == sorted_energies[ss] && !printed[pp]) {
+        cout << setw(index_width) << pp << ")";
         for (int ii = 0; ii < network.nodes; ii++) {
           cout << " " << patterns[pp][ii];
         }
@@ -535,7 +536,6 @@ void network_simulation::print_expected_states() const {
 void network_simulation::print_distances() const {
   cout << "energy <d_1>, <d_2>, ..., <d_p>" << endl;
   const int energy_width = log10(network.max_energy) + 2;
-  const int pattern_number = patterns.size();
   const int distance_dec = 6;
   cout << setprecision(distance_dec);
   for (int ee = energy_range - 1; ee >= 0; ee--) {
