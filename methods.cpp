@@ -491,14 +491,20 @@ void network_simulation::print_patterns() const {
   }
 }
 
-// print each observed energy, as well as the values of
-//   the energy histogram, sample histogram, and density of states at that energy
+// for each energy observed, print the energy and the corresponding values in
+//   the energy histogram, sample histogram, and density of states
 void network_simulation::print_energy_data() const {
+  // get the maximum value in the energy histogram
+  unsigned long long int most_observations = 0;
+  for (int ee = 0; ee < energy_range; ee++) {
+    most_observations = max(energy_histogram[ee], most_observations);
+  }
+
   cout << "energy observations samples log10_dos" << endl;
   const int energy_width = log10(network.max_energy) + 2;
-  const int energy_hist_width = log10(energy_histogram[entropy_peak]) + 1;
+  const int energy_hist_width = log10(most_observations) + 1;
   const int sample_width = log10(sample_histogram[entropy_peak]) + 1;
-  const int dos_dec = 6;
+  const int dos_dec = 6; // decimal precision with which to print ln_dos
   for (int ee = energy_range - 1; ee >= 0; ee--) {
     const int observations = energy_histogram[ee];
     if (observations != 0) {

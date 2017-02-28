@@ -443,7 +443,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     ns.print_expected_states();
     cout << endl;
     ns.print_distances();
-    cout << endl << endl;
+    cout << endl;
   }
 
   cout << "simulation complete" << endl << endl;
