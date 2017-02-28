@@ -272,25 +272,33 @@ void network_simulation::compute_dos_from_transitions() {
   // keep track of the maximal value of ln_dos
   double max_ln_dos = 0;
 
-  // sweep across all energies to construct the density of states
+  // sweep up through all energies to "bootstrap" the density of states
   ln_dos[0] = 0; // seed a value of ln_dos for the sweep
   for (int ee = 1; ee < energy_range; ee++) {
 
     ln_dos[ee] = ln_dos[ee-1];
 
+    // if we haven't actually seen this energy, go on to the next one
     if (energy_histogram[ee] == 0) continue;
 
+    // compute net transition flux up to energy ee from below (i.e. from lower energies),
+    //   and down from energy ee (i.e. to lower energies)
     double flux_up_to_this_energy = 0;
     double flux_down_from_this_energy = 0;
-    for (int smaller_ee = 0; smaller_ee < ee; smaller_ee++) {
+    for (int smaller_ee = ee - max_de; smaller_ee < ee; smaller_ee++) {
+      if (smaller_ee < 0) continue;
       flux_up_to_this_energy += (exp(ln_dos[smaller_ee] - ln_dos[ee])
                                  * transition_matrix(ee, smaller_ee));
       flux_down_from_this_energy += transition_matrix(smaller_ee, ee);
     }
+
+    //
     if (flux_up_to_this_energy > 0 && flux_down_from_this_energy > 0) {
       ln_dos[ee] += log(flux_up_to_this_energy/flux_down_from_this_energy);
     }
 
+    // keep track of the maximum value of ln_dos,
+    //  and the energy at which the density of states is maximal (i.e. the entropy peak)
     if (ln_dos[ee] > max_ln_dos) {
       max_ln_dos = ln_dos[ee];
       entropy_peak = ee;
@@ -450,7 +458,7 @@ void network_simulation::print_patterns() const {
   vector<int> sorted_energies = energies;
   sort(sorted_energies.begin(), sorted_energies.end());
 
-  // printed[pp]: have we printed pattern number pp?
+  // printed[pp]: have we printed pattern pp?
   vector<bool> printed(pattern_number,false);
 
   // print patterns in order of decreasing energy
@@ -476,7 +484,7 @@ void network_simulation::print_patterns() const {
 void network_simulation::print_energy_data() const {
   cout << "energy observations samples log10_dos" << endl;
   const int energy_width = log10(network.max_energy) + 2;
-  const int energy_hist_width = log10(2*energy_histogram[entropy_peak] + 1) + 1;
+  const int energy_hist_width = log10(energy_histogram[entropy_peak]) + 1;
   const int sample_width = log10(sample_histogram[entropy_peak]) + 1;
   const int dos_dec = 6;
   for (int ee = energy_range - 1; ee >= 0; ee--) {

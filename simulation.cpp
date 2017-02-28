@@ -48,10 +48,11 @@ int main(const int arg_num, const char *arg_vec[]) {
      "input file containing patterns stored in the neural network")
     ;
 
-  int log10_iterations;
   bool all_temps;
   bool fixed_temp;
   double beta_cap;
+  int init_factor;
+  int log10_iterations;
 
   po::options_description simulation_options("General simulation options",
                                              help_text_length);
@@ -64,20 +65,19 @@ int main(const int arg_num, const char *arg_vec[]) {
     ("beta_cap", po::value<double>(&beta_cap)->default_value(1),
      "maximum inverse temperature (equivalently, minimum temperature) scale"
      " of interest in the simulation")
+    ("init_factor", po::value<int>(&init_factor)->default_value(5),
+     "run for nodes * pattern_number * 10^(init_factor) iterations"
+     " per initialization cycle")
     ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
      "log10 of the number of iterations to simulate")
     ;
 
-  int init_factor;
   double target_sample_error;
   int tpff; // "transition probability fudge factor"
 
   po::options_description all_temps_options("All temperature simulation options",
                                             help_text_length);
   all_temps_options.add_options()
-    ("init_factor", po::value<int>(&init_factor)->default_value(5),
-     "run for nodes * pattern_number * 10^(init_factor) iterations"
-     " per initialization cycles")
     ("sample_error", po::value<double>(&target_sample_error)->default_value(0.01,"0.01"),
      "the initialization routine terminates when it achieves this"
      " expected fractional sample error at an inverse temperature beta_cap")
@@ -208,12 +208,9 @@ int main(const int arg_num, const char *arg_vec[]) {
   // set inverse temperature scale the inverse units of our energies
   beta_cap *= ns.network.energy_scale / nodes;
 
-  if (debug) {
-    ns.print_patterns();
-    cout << endl;
-    ns.network.print_couplings();
-    cout << endl;
-  }
+  // number of iterations per initialization cycle
+  const int iterations_per_cycle
+    = ns.network.nodes * ns.patterns.size() * pow(10, init_factor);
 
   // make a hash of the patterns to identify this network
   const int hash = [&]() -> int {
@@ -225,6 +222,13 @@ int main(const int arg_num, const char *arg_vec[]) {
     }
     return running_hash;
   }();
+
+  if (debug) {
+    ns.print_patterns();
+    cout << endl;
+    ns.network.print_couplings();
+    cout << endl;
+  }
 
   // -------------------------------------------------------------------------------------
   // Initialize the weight array
@@ -238,6 +242,21 @@ int main(const int arg_num, const char *arg_vec[]) {
     // for a fixed (or infinite) temperature simulation, use boltzmann weights
     for (int ee = 0; ee < ns.energy_range; ee++) {
       ns.ln_weights[ee] = -ee * beta_cap;
+    }
+
+    // run for one initialization cycle in order to locate the entropy peak
+    for (int ii = 0; ii < iterations_per_cycle; ii++) {
+
+      // make a random move and update the energy histogram
+      ns.state = random_change(ns.state, rnd(generator));
+      ns.update_energy_histogram(ns.energy());
+    }
+
+    // locate the entropy peak
+    for (int ee = 0; ee < ns.energy_range; ee++) {
+      if (ns.energy_histogram[ee] > ns.energy_histogram[ns.entropy_peak]) {
+        ns.entropy_peak = ee;
+      }
     }
 
   } else if (all_temps) {
@@ -256,10 +275,6 @@ int main(const int arg_num, const char *arg_vec[]) {
 
       int new_energy; // energy of the state we move into
       int old_energy = ns.energy(); // energy of the last state
-
-      // number of iterations per initialization cycle
-      const int iterations_per_cycle
-        = ns.network.nodes * ns.patterns.size() * pow(10, init_factor);
 
       do {
         for (int ii = 0; ii < iterations_per_cycle; ii++) {
@@ -364,14 +379,14 @@ int main(const int arg_num, const char *arg_vec[]) {
     // compute weights appropriately
     ns.compute_weights_from_dos(beta_cap);
 
-    // initialize a new random state and clear the histograms
-    ns.state = random_state(nodes, rnd, generator);
-    ns.initialize_histograms();
-
     if (debug) {
       ns.print_energy_data();
       cout << endl;
     }
+
+    // initialize a new random state and clear the histograms
+    ns.state = random_state(nodes, rnd, generator);
+    ns.initialize_histograms();
 
     cout << "starting an all-temperature simulation" << endl << endl;
   }
