@@ -120,7 +120,8 @@ struct network_simulation {
   int transitions_from(const int energy) const;
 
   // elements of the actual normalized transition matrix:
-  //   the probability of moving from a given initial energy into a specific final energy
+  //   the probability of proposing a move from a given initial energy
+  //   into a specific final energy
   double transition_matrix(const int final_energy, const int initial_energy) const;
 
   // -------------------------------------------------------------------------------------
