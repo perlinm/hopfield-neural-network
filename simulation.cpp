@@ -205,7 +205,7 @@ int main(const int arg_num, const char *arg_vec[]) {
        << endl;
 
   // set inverse temperature scale the inverse units of our energies
-  beta_cap *= ns.network.energy_scale / nodes;
+  beta_cap *= double(ns.network.energy_scale) / nodes;
 
   // number of iterations per initialization cycle
   const int iterations_per_cycle
