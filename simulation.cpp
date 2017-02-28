@@ -51,7 +51,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   int log10_iterations;
   bool all_temps;
   bool fixed_temp;
-  int beta_cap_int;
+  double beta_cap;
 
   po::options_description simulation_options("General simulation options",
                                              help_text_length);
@@ -61,21 +61,22 @@ int main(const int arg_num, const char *arg_vec[]) {
     ("fixed_temp",
      po::value<bool>(&fixed_temp)->default_value(false)->implicit_value(true),
      "run a fixed-temperature simulation")
-    ("beta_cap", po::value<int>(&beta_cap_int)->default_value(1),
+    ("beta_cap", po::value<double>(&beta_cap)->default_value(1),
      "inverse temperature scale of interest in simulation")
     ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
      "log10 of the number of iterations to simulate")
     ;
 
-  int log10_init_cycle;
+  int init_factor;
   double target_sample_error;
   int tpff; // "transition probability fudge factor"
 
   po::options_description all_temps_options("All temperature simulation options",
                                             help_text_length);
   all_temps_options.add_options()
-    ("init_cycle", po::value<int>(&log10_init_cycle)->default_value(7),
-     "log10 of the number of iterations in one initialization cycle")
+    ("init_factor", po::value<int>(&init_factor)->default_value(5),
+     "run for nodes * pattern_number * 10^(init_factor) iterations"
+     " per initialization cycles")
     ("sample_error", po::value<double>(&target_sample_error)->default_value(0.01,"0.01"),
      "the initialization routine terminates when it achieves this"
      " expected fractional sample error at an inverse temperature beta_cap")
@@ -195,16 +196,16 @@ int main(const int arg_num, const char *arg_vec[]) {
   // construct network simulation object with a random initial state
   network_simulation ns(patterns, random_state(nodes, rnd, generator));
 
-  // set inverse temperature scale the inverse units of our energies
-  const double beta_cap = double(beta_cap_int*ns.network.energy_scale)/nodes;
-
-  // print some info
+  // print some info about the simulation
   cout << endl
        << "maximum energy: " << ns.network.max_energy << endl
        << "maximum energy change: " << ns.network.max_energy_change << endl
        << "energy scale: " << ns.network.energy_scale << endl
-       << "beta cap: " << beta_cap_int << endl
+       << "inverse temperature: " << beta_cap << endl
        << endl;
+
+  // set inverse temperature scale the inverse units of our energies
+  beta_cap *= ns.network.energy_scale / nodes;
 
   if (debug) {
     ns.print_patterns();
@@ -240,86 +241,102 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   } else if (all_temps) {
 
-    cout << "initializing transition matrix for an all-temperature simulation..." << endl
-         << "sample_error cycle_number" << endl;
+    // if there is no file containing the transition matrix we need,
+    //   run the standard initialization routine
+    if (true) {
 
-    // number of initialization cycles we have finished
-    int cycles = 0;
-    // expected fractional error in sample count at an inverse temperature beta
-    double sample_error;
+      cout << "initializing transition matrix for an all-temperature simulation..." << endl
+           << "sample_error cycle_number" << endl;
 
-    int new_energy; // energy of the state we move into
-    int old_energy = ns.energy(); // energy of the last state
-    do {
-      for (int ii = 0; ii < pow(10,log10_init_cycle); ii++) {
+      // number of initialization cycles we have finished
+      int cycles = 0;
+      // expected fractional error in sample count at an inverse temperature beta
+      double sample_error;
 
-        // construct the state which we are proposing to move into
-        const vector<bool> proposed_state = random_change(ns.state, rnd(generator));
+      int new_energy; // energy of the state we move into
+      int old_energy = ns.energy(); // energy of the last state
 
-        // energy of the proposed state, and the energy change for the proposed move
-        const int proposed_energy = ns.energy(proposed_state);
-        const int energy_change = proposed_energy - old_energy;
+      // number of iterations per initialization cycle
+      const int iterations_per_cycle
+        = ns.network.nodes * ns.patterns.size() * pow(10, init_factor);
 
-        // this update should happen regardless of whether we make the move
-        ns.update_transition_histogram(old_energy, energy_change);
+      do {
+        for (int ii = 0; ii < iterations_per_cycle; ii++) {
 
-        if (energy_change <= 0) {
-          // always accept moves into states of lower energy
-          ns.state = proposed_state;
-          new_energy = proposed_energy;
+          // construct the state which we are proposing to move into
+          const vector<bool> proposed_state = random_change(ns.state, rnd(generator));
 
-        } else {
-          // accept the moves to higher energy states with some probability
-          const double old_norm = ns.transitions_from(old_energy);
-          const double new_norm = ns.transitions_from(proposed_energy);
+          // energy of the proposed state, and the energy change for the proposed move
+          const int proposed_energy = ns.energy(proposed_state);
+          const int energy_change = proposed_energy - old_energy;
 
-          const double forward_flux
-            = (double(ns.transitions(old_energy, energy_change) + tpff)
-               / (old_norm + tpff));
-          const double backward_flux
-            = (double(ns.transitions(proposed_energy, -energy_change) + tpff)
-               / (new_norm + tpff));
+          // this update should happen regardless of whether we make the move
+          ns.update_transition_histogram(old_energy, energy_change);
 
-          const double acceptance_probability = max(forward_flux / backward_flux,
-                                                    exp(-energy_change * beta_cap));
-
-          // if we pass a probability test, accept the move
-          if (rnd(generator) < acceptance_probability) {
+          if (energy_change <= 0) {
+            // always accept moves into states of lower energy
             ns.state = proposed_state;
             new_energy = proposed_energy;
+
           } else {
-            // otherwise reject it
-            new_energy = old_energy;
+            // accept the moves to higher energy states with some probability
+            const double old_norm = ns.transitions_from(old_energy);
+            const double new_norm = ns.transitions_from(proposed_energy);
+
+            const double forward_flux
+              = (double(ns.transitions(old_energy, energy_change) + tpff)
+                 / (old_norm + tpff));
+            const double backward_flux
+              = (double(ns.transitions(proposed_energy, -energy_change) + tpff)
+                 / (new_norm + tpff));
+
+            const double acceptance_probability = max(forward_flux / backward_flux,
+                                                      exp(-energy_change * beta_cap));
+
+            // if we pass a probability test, accept the move
+            if (rnd(generator) < acceptance_probability) {
+              ns.state = proposed_state;
+              new_energy = proposed_energy;
+            } else {
+              // otherwise reject it
+              new_energy = old_energy;
+            }
           }
+
+          // update the energy and sample histograms
+          // we don't care about other histograms during initialization
+          ns.update_energy_histogram(new_energy);
+          ns.update_sample_histogram(new_energy, old_energy);
+
+          // as we move on with our lives (and this loop) the new energy turns old
+          old_energy = new_energy;
         }
 
-        // update the energy and sample histograms
-        // we don't care about other histograms during initialization
-        ns.update_energy_histogram(new_energy);
-        ns.update_sample_histogram(new_energy, old_energy);
+        // increment the cycle cound and compute the density of states
+        cycles++;
+        ns.compute_dos_from_transitions();
 
-        // as we move on with our lives (and this loop) the new energy turns old
-        old_energy = new_energy;
-      }
+        // compute the expected fractional sample error at an inverse temperature beta_cap
+        sample_error = ns.fractional_sample_error(beta_cap);
 
-      // increment the cycle cound and compute the density of states
-      cycles++;
+        cout << fixed << setprecision(ceil(-log10(target_sample_error)) + 2)
+             << sample_error << " " << cycles << endl;
+
+        // loop until we satisfy the end condition for initialization
+      } while (sample_error > target_sample_error);
+
+      cout << endl;
+
+    } else { // if the transition matrix we need is already exists, read it in
+
+      /************************************************************/
+      // read in transition matrix
+      // print text telling us what's going on while it's happning
+      /************************************************************/
+
+      // compute density of states from the transition matrix we read in
       ns.compute_dos_from_transitions();
 
-      // compute the expected fractional sample error at an inverse temperature beta_cap
-      sample_error = ns.fractional_sample_error(beta_cap);
-
-      cout << fixed << setprecision(ceil(-log10(target_sample_error)) + 2)
-           << sample_error << " " << cycles << endl;
-
-      // loop until we satisfy the end condition for initialization
-    } while (sample_error > target_sample_error);
-
-    cout << endl;
-
-    if (debug) {
-      ns.print_energy_data();
-      cout << endl;
     }
 
     // compute weights appropriately
@@ -329,6 +346,11 @@ int main(const int arg_num, const char *arg_vec[]) {
     ns.state = random_state(nodes, rnd, generator);
     ns.initialize_histograms();
 
+    if (debug) {
+      ns.print_energy_data();
+      cout << endl;
+    }
+
     cout << "starting an all-temperature simulation" << endl << endl;
   }
 
@@ -336,16 +358,20 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Run simulation
   // -------------------------------------------------------------------------------------
 
-  int new_energy;
-  int old_energy = ns.energy();
+  int new_energy; // energy of the state we move into
+  int old_energy = ns.energy(); // energy of the last state
   for (int ii = 0; ii < pow(10,log10_iterations); ii++) {
 
+    // construct the state which we are proposing to move into,
+    //   and compute its energy
     const vector<bool> proposed_state = random_change(ns.state, rnd(generator));
     const int proposed_energy = ns.energy(proposed_state);
 
+    // determine the probability with which we will accept a move into the proposed state
     const double acceptance_probability = exp(ns.ln_weights[proposed_energy]
                                               - ns.ln_weights[old_energy]);
 
+    // if we pass a probability test, accept the move
     if (rnd(generator) < acceptance_probability) {
       ns.state = proposed_state;
       new_energy = proposed_energy;
@@ -353,13 +379,17 @@ int main(const int arg_num, const char *arg_vec[]) {
       new_energy = old_energy;
     }
 
+    // update all histograms (except the transition histogram used for initialization)
     ns.update_energy_histogram(new_energy);
     ns.update_sample_histogram(new_energy, old_energy);
     ns.update_state_histograms(new_energy);
     ns.update_distance_histograms(ns.state, new_energy);
+
+    // update the old energy
     old_energy = new_energy;
   }
 
+  // compute the density of states
   ns.compute_dos_from_energy_histogram();
 
   if (debug) {
@@ -372,5 +402,11 @@ int main(const int arg_num, const char *arg_vec[]) {
   }
 
   cout << "simulation complete" << endl << endl;
+
+  // -------------------------------------------------------------------------------------
+  // Write data files
+  // -------------------------------------------------------------------------------------
+
+
 
 }
