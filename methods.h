@@ -81,7 +81,7 @@ struct network_simulation {
   // stores the sum of all distances from every pattern at each energy
   // indexed by (energy, pattern)
   // dividing distance_histogram[ee][pp] by energy_histogram[ee] tells us
-  //   the mean distance from pattern pp at an energy ee
+  //   the mean distance from pattern pp at the energy ee
   vector<vector<unsigned long long int>> distance_histograms;
 
   // stores the number times we have proposed a move

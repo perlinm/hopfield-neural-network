@@ -276,13 +276,16 @@ void network_simulation::compute_dos_from_transitions() {
   ln_dos[0] = 0; // seed a value of ln_dos for the sweep
   for (int ee = 1; ee < energy_range; ee++) {
 
+    // pick an initial guess for the density of states at the energy ee
     ln_dos[ee] = ln_dos[ee-1];
 
-    // if we haven't actually seen this energy, go on to the next one
+    // if we have never actually seen this energy, we don't care to correct
+    //   the previous guess, so go on to the next energy
     if (energy_histogram[ee] == 0) continue;
 
-    // compute net transition flux up to energy ee from below (i.e. from lower energies),
-    //   and down from energy ee (i.e. to lower energies)
+    // given our guess for the density of states at the energy ee,
+    //   compute the net transition fluxes up to ee from below (i.e. from lower energies),
+    //   and down from ee (i.e. to lower energies)
     double flux_up_to_this_energy = 0;
     double flux_down_from_this_energy = 0;
     for (int smaller_ee = ee - max_de; smaller_ee < ee; smaller_ee++) {
@@ -292,7 +295,12 @@ void network_simulation::compute_dos_from_transitions() {
       flux_down_from_this_energy += transition_matrix(smaller_ee, ee);
     }
 
-    // todo: explain this
+    // in an equilibrium ensemble of simulations, the two fluxes we computed above
+    //   should be the same; if they are not, it is because our guess for
+    //   the density of states was incorrect
+    // we therefore multiply the density of states by the factor which would make
+    //   these fluxes equal, which is presicely the ratio of these fluxes
+    //   (see definition of flux_up)
     if (flux_up_to_this_energy > 0 && flux_down_from_this_energy > 0) {
       ln_dos[ee] += log(flux_up_to_this_energy/flux_down_from_this_energy);
     }
