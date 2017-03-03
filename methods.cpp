@@ -15,11 +15,11 @@ int gcd(const int a, const int b) {
 
 // distance between two states
 int state_distance(const vector<bool>& s1, const vector<bool>& s2) {
-  int distance = 0;
+  int overlap = 0;
   for (int ii = 0, size = s1.size(); ii < size; ii++) {
-    distance += (s1[ii] == s2[ii]);
+    overlap += (s1[ii] == s2[ii]);
   }
-  return distance;
+  return s1.size() - overlap;
 }
 
 // generate a random state
@@ -193,16 +193,14 @@ void network_simulation::initialize_histograms() {
   sample_histogram = vector<unsigned long long int>(energy_range, 0);
   state_histograms = vector<vector<unsigned long long int>>(energy_range);
   distance_histograms = vector<vector<unsigned long long int>>(energy_range);
+  state_samples = vector<unsigned long long int>(energy_range, 0);
+  distance_samples = vector<unsigned long long int>(energy_range, 0);
   transition_histogram = vector<vector<unsigned long long int>>(energy_range);
   for (int ee = 0; ee < energy_range; ee++) {
     state_histograms[ee] = vector<unsigned long long int>(network.nodes, 0);
     distance_histograms[ee] = vector<unsigned long long int>(pattern_number, 0);
     transition_histogram[ee] = vector<unsigned long long int>(2*max_de + 1, 0);
   }
-}
-
-void network_simulation::update_energy_histogram(const int energy) {
-  energy_histogram[energy]++;
 }
 
 void network_simulation::update_state_histograms(const int energy) {
@@ -522,40 +520,39 @@ void network_simulation::print_energy_data() const {
 // print expectation value of each spin spin at each energy
 void network_simulation::print_expected_states() const {
   cout << "energy <s_1>, <s_2>, ..., <s_n>" << endl;
-  const int sample_factor = network.nodes; // number of moves per histogram update
   const int energy_width = log10(network.max_energy) + 2;
   const int state_dec = 6;
   cout << setprecision(state_dec);
   for (int ee = energy_range - 1; ee >= 0; ee--) {
-    const int observations = energy_histogram[ee];
-    if (observations > 0) {
-      cout << setw(energy_width) << ee * network.energy_scale - network.max_energy;
-      for (int ii = 0; ii < network.nodes; ii++) {
-        cout << " " << setw(state_dec + 3)
-             << 2*double(state_histograms[ee][ii]*sample_factor) / observations - 1;
-      }
-      cout << endl;
+    // check that we have sampled this energy
+    const int observations = state_samples[ee];
+    if (observations == 0) continue;
+
+    cout << setw(energy_width) << ee * network.energy_scale - network.max_energy;
+    for (int ii = 0; ii < network.nodes; ii++) {
+      cout << " " << setw(state_dec + 3)
+           << double(state_histograms[ee][ii]) / observations;
     }
+    cout << endl;
   }
 }
 
 // print expectation value of distances from each pattern at each energy
 void network_simulation::print_distances() const {
   cout << "energy <d_1>, <d_2>, ..., <d_p>" << endl;
-  const int sample_factor = network.nodes * pattern_number;
   const int energy_width = log10(network.max_energy) + 2;
   const int distance_dec = 6;
   for (int ee = energy_range - 1; ee >= 0; ee--) {
-    const int observations = energy_histogram[ee];
-    if (observations > 0) {
-      cout << setw(energy_width) << ee * network.energy_scale - network.max_energy;
-      for (int ii = 0; ii < pattern_number; ii++) {
-        const double val
-          = double(distance_histograms[ee][ii]*sample_factor) / observations;
-        const int prec = distance_dec - int(max(log10(val),0.));
-        cout << " " << setw(distance_dec) << setprecision(prec) << val;
-      }
-      cout << endl;
+    // check that we have sampled this energy
+    const unsigned long long int observations = distance_samples[ee];
+    if (observations == 0) continue;
+
+    cout << setw(energy_width) << ee * network.energy_scale - network.max_energy;
+    for (int pp = 0; pp < pattern_number; pp++) {
+      const double val = double(distance_histograms[ee][pp]) / observations;
+      const int prec = distance_dec - int(max(log10(val),0.));
+      cout << " " << setw(distance_dec) << setprecision(prec) << val;
     }
+    cout << endl;
   }
 }

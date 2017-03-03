@@ -248,7 +248,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
       // make a random move and update the energy histogram
       ns.state = random_change(ns.state, rnd(generator));
-      ns.update_energy_histogram(ns.energy());
+      ns.energy_histogram[ns.energy()]++;
     }
 
     // locate the entropy peak
@@ -341,7 +341,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
           // update the energy and sample histograms
           // we don't care about other histograms during initialization
-          ns.update_energy_histogram(new_energy);
+          ns.energy_histogram[new_energy]++;
           ns.update_sample_histogram(new_energy, old_energy);
 
           // as we move on with our lives (and this loop) the new energy turns old
@@ -417,15 +417,17 @@ int main(const int arg_num, const char *arg_vec[]) {
     }
 
     // update energy and sample histograms
-    ns.update_energy_histogram(new_energy);
+    ns.energy_histogram[new_energy]++;
     ns.update_sample_histogram(new_energy, old_energy);
 
     // update histograms which take O(X) time to update every X moves;
     //   otherwise we will be asymptotically spending all of simulation
     //   time on these updates
     if (ii % ns.network.nodes == 0) {
+      ns.state_samples[new_energy]++;
       ns.update_state_histograms(new_energy);
       if (ii % (ns.network.nodes * ns.pattern_number) == 0) {
+        ns.distance_samples[new_energy]++;
         ns.update_distance_histograms(ns.state, new_energy);
       }
     }

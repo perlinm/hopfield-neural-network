@@ -85,6 +85,10 @@ struct network_simulation {
   //   the mean distance from pattern pp at the energy ee
   vector<vector<unsigned long long int>> distance_histograms;
 
+  // number of times we have sampled states or distance at a given energy
+  vector<unsigned long long int> state_samples;
+  vector<unsigned long long int> distance_samples;
+
   // stores the number times we have proposed a move
   //   from a given energy with a specified energy difference
   // indexed by (energy, change in energy)
@@ -139,7 +143,6 @@ struct network_simulation {
   void initialize_histograms();
 
   // update histograms with an observation
-  void update_energy_histogram(const int energy);
   void update_state_histograms(const int energy);
   void update_distance_histograms(const vector<bool>& state, const int energy);
   void update_sample_histogram(const int new_energy, const int old_energy);
