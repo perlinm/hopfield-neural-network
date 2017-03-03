@@ -383,13 +383,13 @@ int main(const int arg_num, const char *arg_vec[]) {
       cout << endl;
     }
 
-    // initialize a new random state and clear the histograms
-    ns.state = random_state(nodes, rnd, generator);
-    ns.initialize_histograms();
-
     cout << "initialization complute" << endl
          << "starting the simulation" << endl << endl;
   }
+
+  // initialize a new random state and clear the histograms
+  ns.state = random_state(nodes, rnd, generator);
+  ns.initialize_histograms();
 
   // -------------------------------------------------------------------------------------
   // Run simulation
@@ -397,7 +397,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   int new_energy; // energy of the state we move into
   int old_energy = ns.energy(); // energy of the last state
-  for (int ii = 0; ii < pow(10,log10_iterations); ii++) {
+  for (unsigned long long ii = 0; ii < pow(10,log10_iterations); ii++) {
 
     // construct the state which we are proposing to move into,
     //   and compute its energy
