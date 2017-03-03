@@ -545,14 +545,15 @@ void network_simulation::print_distances() const {
   const int sample_factor = network.nodes * pattern_number;
   const int energy_width = log10(network.max_energy) + 2;
   const int distance_dec = 6;
-  cout << setprecision(distance_dec);
   for (int ee = energy_range - 1; ee >= 0; ee--) {
     const int observations = energy_histogram[ee];
     if (observations > 0) {
       cout << setw(energy_width) << ee * network.energy_scale - network.max_energy;
       for (int ii = 0; ii < pattern_number; ii++) {
-        cout << " " << setw(distance_dec + 2)
-             << double(distance_histograms[ee][ii]*sample_factor) / observations;
+        const double val
+          = double(distance_histograms[ee][ii]*sample_factor) / observations;
+        const int prec = distance_dec - int(max(log10(val),0.));
+        cout << " " << setw(distance_dec) << setprecision(prec) << val;
       }
       cout << endl;
     }
