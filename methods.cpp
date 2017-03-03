@@ -522,6 +522,7 @@ void network_simulation::print_energy_data() const {
 // print expectation value of each spin spin at each energy
 void network_simulation::print_expected_states() const {
   cout << "energy <s_1>, <s_2>, ..., <s_n>" << endl;
+  const int sample_factor = network.nodes; // number of moves per histogram update
   const int energy_width = log10(network.max_energy) + 2;
   const int state_dec = 6;
   cout << setprecision(state_dec);
@@ -531,7 +532,7 @@ void network_simulation::print_expected_states() const {
       cout << setw(energy_width) << ee * network.energy_scale - network.max_energy;
       for (int ii = 0; ii < network.nodes; ii++) {
         cout << " " << setw(state_dec + 3)
-             << 2*double(state_histograms[ee][ii])/observations - 1;
+             << 2*double(state_histograms[ee][ii]*sample_factor) / observations - 1;
       }
       cout << endl;
     }
@@ -541,6 +542,7 @@ void network_simulation::print_expected_states() const {
 // print expectation value of distances from each pattern at each energy
 void network_simulation::print_distances() const {
   cout << "energy <d_1>, <d_2>, ..., <d_p>" << endl;
+  const int sample_factor = network.nodes * pattern_number;
   const int energy_width = log10(network.max_energy) + 2;
   const int distance_dec = 6;
   cout << setprecision(distance_dec);
@@ -550,7 +552,7 @@ void network_simulation::print_distances() const {
       cout << setw(energy_width) << ee * network.energy_scale - network.max_energy;
       for (int ii = 0; ii < pattern_number; ii++) {
         cout << " " << setw(distance_dec + 2)
-             << double(distance_histograms[ee][ii]) / observations;
+             << double(distance_histograms[ee][ii]*sample_factor) / observations;
       }
       cout << endl;
     }

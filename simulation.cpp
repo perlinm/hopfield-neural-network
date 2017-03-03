@@ -348,7 +348,7 @@ int main(const int arg_num, const char *arg_vec[]) {
           old_energy = new_energy;
         }
 
-        // increment the cycle cound and compute the density of states
+        // increment the cycle count and compute the density of states
         cycles++;
         ns.compute_dos_from_transitions();
 
@@ -425,7 +425,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     //   time on these updates
     if (ii % ns.network.nodes == 0) {
       ns.update_state_histograms(new_energy);
-      if (ii % ns.pattern_number == 0) {
+      if (ii % (ns.network.nodes * ns.pattern_number) == 0) {
         ns.update_distance_histograms(ns.state, new_energy);
       }
     }
