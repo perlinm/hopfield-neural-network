@@ -353,12 +353,21 @@ void network_simulation::compute_weights_from_dos(const double beta_cap) {
       }
     }
 
-    // in the relevant range of observed energies, set weights appropriately
-    for (int ee = entropy_peak; ee > lowest_seen_energy; ee--) {
+    // in the relevant range of observed energies, set weights appropriately,
+    //   but never set any weight higher than we would at an inverse temperature beta_cap
+    double excess_weight = 0;
+    const double max_diff = energy_range * beta_cap;
+    ln_weights[entropy_peak] = -ln_dos[entropy_peak];
+    for (int ee = entropy_peak - 1; ee >= lowest_seen_energy; ee--) {
       ln_weights[ee] = -ln_dos[ee];
+      const double diff = ln_weights[ee] - ln_weights[ee+1];
+      if (diff > max_diff) {
+        excess_weight += max_diff - diff;
+        ln_weights[ee] -= excess_weight;
+      }
     }
-    // below all observed energies, use weights fixed at an inverse temperature beta_cap
-    for (int ee = lowest_seen_energy; ee >= 0; ee--) {
+    // below all observed energies, use fixed temperature weights
+    for (int ee = lowest_seen_energy - 1; ee >= 0; ee--) {
       ln_weights[ee] = (-ln_dos[lowest_seen_energy]
                         - abs(lowest_seen_energy - ee) * beta_cap);
     }
@@ -382,11 +391,20 @@ void network_simulation::compute_weights_from_dos(const double beta_cap) {
     }
 
     // in the relevant range of observed energies, set weights appropriately
-    for (int ee = entropy_peak; ee < highest_seen_energy; ee++) {
+    //   but never set any weight higher than we would at an inverse temperature beta_cap
+    double excess_weight = 0;
+    const double max_diff = - energy_range * beta_cap;
+    ln_weights[entropy_peak] = -ln_dos[entropy_peak];
+    for (int ee = entropy_peak + 1; ee <= highest_seen_energy; ee++) {
       ln_weights[ee] = -ln_dos[ee];
+      const double diff = ln_weights[ee] - ln_weights[ee-1];
+      if (diff > max_diff) {
+        excess_weight += max_diff - diff;
+        ln_weights[ee] -= excess_weight;
+      }
     }
-    // above all observed energies, use weights fixed at an inverse temperature beta_cap
-    for (int ee = highest_seen_energy; ee < energy_range; ee++) {
+    // above all observed energies, use fixed temperature weights
+    for (int ee = highest_seen_energy + 1; ee < energy_range; ee++) {
       ln_weights[ee] = (-ln_dos[highest_seen_energy]
                         - abs(highest_seen_energy - ee) * beta_cap);
     }
@@ -397,6 +415,7 @@ void network_simulation::compute_weights_from_dos(const double beta_cap) {
       ln_weights[ee] = -ln_dos[entropy_peak];
     }
   }
+
 }
 
 // expectation value of fractional sample error at a given inverse temperature
@@ -490,7 +509,7 @@ void network_simulation::print_patterns() const {
 }
 
 // for each energy observed, print the energy and the corresponding values in
-//   the energy histogram, sample histogram, and density of states
+//   the energy histogram, sample histogram, density of states, and weight
 void network_simulation::print_energy_data() const {
   // get the maximum value in the energy histogram
   unsigned long long int most_observations = 0;
@@ -498,11 +517,11 @@ void network_simulation::print_energy_data() const {
     most_observations = max(energy_histogram[ee], most_observations);
   }
 
-  cout << "energy observations samples log10_dos" << endl;
+  cout << "energy observations samples log10_dos ln10_weights" << endl;
   const int energy_width = log10(network.max_energy) + 2;
   const int energy_hist_width = log10(most_observations) + 1;
   const int sample_width = log10(sample_histogram[entropy_peak]) + 1;
-  const int dos_dec = 6; // decimal precision with which to print ln_dos
+  const int double_dec = 6; // decimal precision with which to print doubles
   for (int ee = energy_range - 1; ee >= 0; ee--) {
     const int observations = energy_histogram[ee];
     if (observations != 0) {
@@ -511,8 +530,10 @@ void network_simulation::print_energy_data() const {
            << ee * network.energy_scale - network.max_energy << " "
            << setw(energy_hist_width) << observations << " "
            << setw(sample_width) << sample_histogram[ee] << " "
-           << setw(dos_dec + 3) << setprecision(dos_dec)
-           << log10(exp(1)) * ln_dos[ee] << endl;
+           << setw(double_dec + 3) << setprecision(double_dec)
+           << log10(exp(1)) * ln_dos[ee] << " "
+           << setw(double_dec + 3) << setprecision(double_dec)
+           << log10(exp(1)) * ln_weights[ee] << endl;
     }
   }
 }

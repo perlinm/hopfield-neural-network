@@ -169,7 +169,7 @@ struct network_simulation {
   // print patterns defining the simulated network
   void print_patterns() const;
 
-  // print energy histogram, sample histogram, and density of states
+  // print energy histogram, sample histogram, density of states, and weights
   void print_energy_data() const;
 
   // print expectation value of each spin spin at each energy

@@ -387,6 +387,12 @@ int main(const int arg_num, const char *arg_vec[]) {
          << "starting the simulation" << endl << endl;
   }
 
+  // for human readability, normalize the weights at the entropy peak
+  // normalize the weight array at the entropy peak
+  for (int ee = 0; ee < ns.energy_range; ee++) {
+    ns.ln_weights[ee] -= ns.ln_weights[ns.entropy_peak];
+  }
+
   // initialize a new random state and clear the histograms
   ns.state = random_state(nodes, rnd, generator);
   ns.initialize_histograms();
