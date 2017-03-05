@@ -189,12 +189,14 @@ double network_simulation::transition_matrix(const int final_energy,
 //   state histograms, distance histograms, energy transitions
 void network_simulation::initialize_histograms() {
   energy_histogram = vector<unsigned long long int>(energy_range, 0);
-  visit_log = vector<bool>(energy_range, true);
-  sample_histogram = vector<unsigned long long int>(energy_range, 0);
-  state_histograms = vector<vector<unsigned long long int>>(energy_range);
-  distance_histograms = vector<vector<unsigned long long int>>(energy_range);
   state_samples = vector<unsigned long long int>(energy_range, 0);
   distance_samples = vector<unsigned long long int>(energy_range, 0);
+
+  visit_log = vector<bool>(energy_range, true);
+  sample_histogram = vector<unsigned long long int>(energy_range, 0);
+
+  state_histograms = vector<vector<unsigned long long int>>(energy_range);
+  distance_histograms = vector<vector<unsigned long long int>>(energy_range);
   transition_histogram = vector<vector<unsigned long long int>>(energy_range);
   for (int ee = 0; ee < energy_range; ee++) {
     state_histograms[ee] = vector<unsigned long long int>(network.nodes, 0);

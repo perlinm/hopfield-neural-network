@@ -1,3 +1,7 @@
+better energy resolution? (factor of 2)
+
+pattern_seed
+
 write to transition matrix and histogram files
 read in transition matrix from file
 

@@ -50,7 +50,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   bool all_temps;
   bool fixed_temp;
-  double beta_cap;
+  double input_beta_cap;
   int init_factor;
   int log10_iterations;
 
@@ -61,7 +61,7 @@ int main(const int arg_num, const char *arg_vec[]) {
      "run an all-temperature simulation")
     ("fixed_T", po::value<bool>(&fixed_temp)->default_value(false)->implicit_value(true),
      "run a fixed-temperature simulation")
-    ("beta_cap", po::value<double>(&beta_cap)->default_value(1),
+    ("beta_cap", po::value<double>(&input_beta_cap)->default_value(1),
      "maximum inverse temperature (equivalently, minimum temperature) scale"
      " of interest in the simulation")
     ("init_factor", po::value<int>(&init_factor)->default_value(5),
@@ -85,12 +85,20 @@ int main(const int arg_num, const char *arg_vec[]) {
      " during transition matrix initialization")
     ;
 
+  string data_dir;
+
+  po::options_description io_options("File I/O options", help_text_length);
+  io_options.add_options()
+    ("data_dir", po::value<string>(&data_dir)->default_value("./data"), "data directory")
+    ;
+
   // collect options
   po::options_description all("All options");
   all.add(general);
   all.add(network_parameters);
   all.add(simulation_options);
   all.add(all_temps_options);
+  all.add(io_options);
 
   // collect inputs
   po::variables_map inputs;
@@ -144,6 +152,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   // determine whether we are using a pattern file afterall
   const bool using_pattern_file = !pattern_file.empty();
 
+  fs::create_directory(data_dir);
+
   // initialize random number generator
   uniform_real_distribution<double> rnd(0.0,1.0); // uniform distribution on [0,1)
   mt19937_64 generator(seed); // use and seed the 64-bit Mersenne Twister 19937 generator
@@ -196,31 +206,63 @@ int main(const int arg_num, const char *arg_vec[]) {
   // construct network simulation object with a random initial state
   network_simulation ns(patterns, random_state(nodes, rnd, generator));
 
-  // print some info about the simulation
-  cout << endl
-       << "maximum energy: " << ns.network.max_energy << endl
-       << "maximum energy change: " << ns.network.max_energy_change << endl
-       << "energy scale: " << ns.network.energy_scale << endl
-       << "inverse temperature: " << beta_cap << endl
-       << endl;
-
-  // set inverse temperature scale the inverse units of our energies
-  beta_cap *= double(ns.network.energy_scale) / nodes;
+  // inverse temperature in units compatible with that for our energies
+  const double beta_cap = input_beta_cap * ns.network.energy_scale / nodes;
 
   // number of iterations per initialization cycle
   const int iterations_per_cycle
     = ns.network.nodes * ns.pattern_number * pow(10, init_factor);
 
+  // print some info about the simulation
+  cout << endl
+       << "maximum energy: " << ns.network.max_energy << endl
+       << "maximum energy change: " << ns.network.max_energy_change << endl
+       << "energy scale: " << ns.network.energy_scale << endl
+       << "inverse temperature: " << input_beta_cap << endl
+       << endl;
+
   // make a hash of the patterns to identify this network
-  const int hash = [&]() -> int {
+  const size_t hash = [&]() -> size_t {
     size_t running_hash = 0;
     for (int pp = 0; pp < ns.pattern_number; pp++) {
       for (int nn = 0; nn < ns.network.nodes; nn++) {
         bo::hash_combine(running_hash, size_t(patterns[pp][nn]));
       }
     }
+    bo::hash_combine(running_hash, input_beta_cap);
+    bo::hash_combine(running_hash, target_sample_error);
     return running_hash;
   }();
+
+  // suffix to all data files read/written by this simulation
+  const string beta_tag = ("-B" + string(input_beta_cap < 0 ? "n" : "")
+                           + to_string(int(round(abs(input_beta_cap)))));
+  const string node_tag = "-N" + to_string(ns.network.nodes);
+  const string pattern_tag = "-P" + to_string(ns.pattern_number);
+  const string file_suffix = (node_tag + pattern_tag + beta_tag
+                              + to_string(hash) + ".txt");
+
+  // paths to data files
+  const fs::path transition_file
+    = fs::path(data_dir) / fs::path("transitions" + file_suffix);
+  const fs::path energy_file
+    = fs::path(data_dir) / fs::path("energies" + file_suffix);
+  const fs::path state_file
+    = fs::path(data_dir) / fs::path("states" + file_suffix);
+  const fs::path distance_file
+    = fs::path(data_dir) / fs::path("distances" + file_suffix);
+
+  // header for all data files
+  stringstream file_header_stream;
+  file_header_stream << "# nodes: " << ns.network.nodes << endl
+                     << "# patterns: " << ns.pattern_number << endl
+                     << "# energy scale: " << ns.network.energy_scale << endl
+                     << "# energy_range: " << ns.energy_range << endl
+                     << "# max_de: " << ns.max_de << endl
+                     << "# beta cap: " << input_beta_cap << endl
+                     << "# target sample error: " << target_sample_error << endl
+                     << endl;
+  const string file_header = file_header_stream.str();
 
   if (debug) {
     ns.print_patterns();
@@ -262,10 +304,10 @@ int main(const int arg_num, const char *arg_vec[]) {
 
     // if there is no file containing the transition matrix we need,
     //   run the standard initialization routine
-    if (true) {
+    if (!fs::exists(transition_file) || true) {
 
-      cout << "starting initialization routine for an all-temperature simulation..." << endl
-           << "sample_error cycle_number" << endl;
+      cout << "starting initialization routine for an all-temperature simulation..."
+           << endl << "sample_error cycle_number" << endl;
 
       // number of initialization cycles we have finished
       int cycles = 0;
@@ -274,7 +316,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
       int new_energy; // energy of the state we move into
       int old_energy = ns.energy(); // energy of the last state
-
+      assert(old_energy < ns.energy_range);
       do {
         for (int ii = 0; ii < iterations_per_cycle; ii++) {
 
@@ -284,6 +326,7 @@ int main(const int arg_num, const char *arg_vec[]) {
           // energy of the proposed state, and the energy change for the proposed move
           const int proposed_energy = ns.energy(proposed_state);
           const int energy_change = proposed_energy - old_energy;
+          assert(abs(energy_change) <= ns.max_de);
 
           // this update should happen regardless of whether we make the move
           ns.update_transition_histogram(old_energy, energy_change);
@@ -339,6 +382,8 @@ int main(const int arg_num, const char *arg_vec[]) {
             }
           }
 
+          assert(new_energy < ns.energy_range);
+
           // update the energy and sample histograms
           // we don't care about other histograms during initialization
           ns.energy_histogram[new_energy]++;
@@ -363,6 +408,21 @@ int main(const int arg_num, const char *arg_vec[]) {
 
       cout << endl;
 
+      // write transition matrix to a file
+      fs::ofstream transition_stream(transition_file);
+      transition_stream << file_header
+             << "# (row)x(column) = (energy)x(de)" << endl;
+      for (int ee = 0; ee < ns.energy_range; ee++) {
+        if (ns.energy_histogram[ee] == 0) continue;
+
+        transition_stream << ee << " " << ns.transitions(ee, -ns.max_de);
+        for (int de = -ns.max_de + 1; de <= ns.max_de; de++) {
+          transition_stream << " " << ns.transitions(ee, de);
+        }
+        transition_stream << endl;
+      }
+      transition_stream.close();
+
     } else { // if the transition matrix we need is already exists, read it in
 
       /************************************************************/
@@ -383,8 +443,7 @@ int main(const int arg_num, const char *arg_vec[]) {
       cout << endl;
     }
 
-    cout << "initialization complute" << endl
-         << "starting the simulation" << endl << endl;
+    cout << "starting the simulation" << endl;
   }
 
   // for human readability, normalize the weights at the entropy peak
@@ -403,6 +462,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   int new_energy; // energy of the state we move into
   int old_energy = ns.energy(); // energy of the last state
+  assert(old_energy < ns.energy_range);
   for (unsigned long long ii = 0; ii < pow(10,log10_iterations); ii++) {
 
     // construct the state which we are proposing to move into,
@@ -421,6 +481,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     } else {
       new_energy = old_energy;
     }
+    assert(new_energy < ns.energy_range);
 
     // update energy and sample histograms
     ns.energy_histogram[new_energy]++;
@@ -446,6 +507,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   ns.compute_dos_from_energy_histogram();
 
   if (debug) {
+    cout << endl;
     ns.print_energy_data();
     cout << endl;
     ns.print_expected_states();
@@ -454,12 +516,48 @@ int main(const int arg_num, const char *arg_vec[]) {
     cout << endl;
   }
 
-  cout << "simulation complete" << endl << endl;
-
   // -------------------------------------------------------------------------------------
   // Write data files
   // -------------------------------------------------------------------------------------
 
+  cout << "writing data files" << endl;
 
+
+  fs::ofstream energy_stream(energy_file);
+  energy_stream << file_header
+                << "# energy, energy histogram, state samples, distance samples" << endl;
+
+  fs::ofstream state_stream(state_file);
+  state_stream << file_header
+               << "# energy, state histogram" << endl;
+
+  fs::ofstream distance_stream(distance_file);
+  distance_stream << file_header
+                  << "# energy, distance histogram" << endl;
+
+  for (int ee = 0; ee < ns.energy_range; ee++) {
+    if (ns.energy_histogram[ee] == 0)  continue;
+
+    energy_stream << ee << " "
+                  << ns.energy_histogram[ee] << " "
+                  << ns.state_samples[ee] << " "
+                  << ns.distance_samples[ee] << endl;
+
+    state_stream << ee << " " << ns.state_histograms[ee][0];
+    for (int ii = 1; ii < ns.network.nodes; ii++) {
+      state_stream << " " << ns.state_histograms[ee][ii];
+    }
+    state_stream << endl;
+
+    distance_stream << ee << " " << ns.distance_histograms[ee][0];
+    for (int pp = 1; pp < ns.pattern_number; pp++) {
+      distance_stream << " " << ns.distance_histograms[ee][pp];
+    }
+    distance_stream << endl;
+  }
+
+  energy_stream.close();
+  state_stream.close();
+  distance_stream.close();
 
 }
