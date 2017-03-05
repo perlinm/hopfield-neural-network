@@ -9,3 +9,4 @@ TAGS
 __pycache__
 *.pyc
 *Notes.bib
+data/*
