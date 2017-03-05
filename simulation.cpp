@@ -22,16 +22,19 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   const int help_text_length = 85;
 
-  unsigned long long int seed;
   bool debug;
+  unsigned long long int seed;
+  unsigned long long int pattern_seed;
 
   po::options_description general("General options", help_text_length);
   general.add_options()
     ("help,h", "produce help message")
-    ("seed", po::value<unsigned long long int>(&seed)->default_value(0),
-     "seed for random number generator")
     ("debug", po::value<bool>(&debug)->default_value(false)->implicit_value(true),
      "enable debug mode")
+    ("seed", po::value<unsigned long long int>(&seed)->default_value(0),
+     "seed for random number generator")
+    ("pattern_seed", po::value<unsigned long long int>(&pattern_seed)->default_value(0),
+     "random number generator seed when generating patterns")
     ;
 
   int nodes;
@@ -156,12 +159,13 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   // initialize random number generator
   uniform_real_distribution<double> rnd(0.0,1.0); // uniform distribution on [0,1)
-  mt19937_64 generator(seed); // use and seed the 64-bit Mersenne Twister 19937 generator
+  mt19937_64 generator; // use the 64-bit Mersenne Twister 19937 generator
 
   // -------------------------------------------------------------------------------------
   // Construct patterns for network and initialize network simulation
   // -------------------------------------------------------------------------------------
 
+  generator.seed(pattern_seed);
   vector<vector<bool>> patterns;
 
   // if we are using a pattern file, read it in
@@ -204,6 +208,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   pattern_number = patterns.size();
 
   // construct network simulation object with a random initial state
+  generator.seed(seed);
   network_simulation ns(patterns, random_state(nodes, rnd, generator));
 
   // inverse temperature in units compatible with that for our energies
