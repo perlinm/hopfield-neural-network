@@ -184,6 +184,7 @@ int main(const int arg_num, const char *arg_vec[]) {
       }
       patterns.push_back(pattern);
     }
+    input.close();
 
   } else {
 
@@ -283,7 +284,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   // initialize weight array
   if (fixed_temp) {
 
-    cout << "starting a fixed temperature simulation" << endl << endl;
+    cout << "initializing a fixed temperature simulation" << endl << endl;
 
     // for a fixed (or infinite) temperature simulation, use boltzmann weights
     for (int ee = 0; ee < ns.energy_range; ee++) {
@@ -309,7 +310,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
     // if there is no file containing the transition matrix we need,
     //   run the standard initialization routine
-    if (!fs::exists(transition_file) || true) {
+    if (!fs::exists(transition_file)) {
 
       cout << "starting initialization routine for an all-temperature simulation..."
            << endl << "sample_error cycle_number" << endl;
@@ -430,10 +431,24 @@ int main(const int arg_num, const char *arg_vec[]) {
 
     } else { // if the transition matrix we need is already exists, read it in
 
-      /************************************************************/
-      // read in transition matrix
-      // print text telling us what's going on while it's happning
-      /************************************************************/
+      cout << "reading in transition matrix" << endl;
+
+      ifstream input(transition_file.c_str());
+      string line;
+      string word;
+
+      // loop over lines
+      while (getline(input,line)) {
+        if (line[0] == '#' || line.empty()) continue;
+        stringstream line_stream(line);
+        line_stream >> word;
+        const int ee = stoi(word);
+        ns.energy_histogram[ee]++;
+        for (int dd = 0; dd < 2*ns.max_de + 1 ; dd++) {
+          line_stream >> word;
+          ns.transition_histogram[ee][dd] = stoi(word);
+        }
+      }
 
       // compute density of states from the transition matrix we read in
       ns.compute_dos_from_transitions();
@@ -443,18 +458,17 @@ int main(const int arg_num, const char *arg_vec[]) {
     // compute weights appropriately
     ns.compute_weights_from_dos(beta_cap);
 
-    if (debug) {
-      ns.print_energy_data();
-      cout << endl;
-    }
-
-    cout << "starting the simulation" << endl;
   }
 
   // for human readability, normalize the weights at the entropy peak
   // normalize the weight array at the entropy peak
   for (int ee = 0; ee < ns.energy_range; ee++) {
     ns.ln_weights[ee] -= ns.ln_weights[ns.entropy_peak];
+  }
+
+  if (debug) {
+    ns.print_energy_data();
+    cout << endl;
   }
 
   // initialize a new random state and clear the histograms
@@ -464,6 +478,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   // -------------------------------------------------------------------------------------
   // Run simulation
   // -------------------------------------------------------------------------------------
+
+  cout << "starting simulation" << endl;
 
   int new_energy; // energy of the state we move into
   int old_energy = ns.energy(); // energy of the last state
@@ -548,14 +564,14 @@ int main(const int arg_num, const char *arg_vec[]) {
                   << ns.state_samples[ee] << " "
                   << ns.distance_samples[ee] << endl;
 
-    state_stream << ee << " " << ns.state_histograms[ee][0];
-    for (int ii = 1; ii < ns.network.nodes; ii++) {
+    state_stream << ee;
+    for (int ii = 0; ii < ns.network.nodes; ii++) {
       state_stream << " " << ns.state_histograms[ee][ii];
     }
     state_stream << endl;
 
-    distance_stream << ee << " " << ns.distance_histograms[ee][0];
-    for (int pp = 1; pp < ns.pattern_number; pp++) {
+    distance_stream << ee;
+    for (int pp = 0; pp < ns.pattern_number; pp++) {
       distance_stream << " " << ns.distance_histograms[ee][pp];
     }
     distance_stream << endl;

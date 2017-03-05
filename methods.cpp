@@ -526,17 +526,16 @@ void network_simulation::print_energy_data() const {
   const int double_dec = 6; // decimal precision with which to print doubles
   for (int ee = energy_range - 1; ee >= 0; ee--) {
     const int observations = energy_histogram[ee];
-    if (observations != 0) {
-      cout << fixed
-           << setw(energy_width)
-           << ee * network.energy_scale - network.max_energy << " "
-           << setw(energy_hist_width) << observations << " "
-           << setw(sample_width) << sample_histogram[ee] << " "
-           << setw(double_dec + 3) << setprecision(double_dec)
-           << log10(exp(1)) * ln_dos[ee] << " "
-           << setw(double_dec + 3) << setprecision(double_dec)
-           << log10(exp(1)) * ln_weights[ee] << endl;
-    }
+    if (observations == 0) continue;
+    cout << fixed
+         << setw(energy_width)
+         << ee * network.energy_scale - network.max_energy << " "
+         << setw(energy_hist_width) << observations << " "
+         << setw(sample_width) << sample_histogram[ee] << " "
+         << setw(double_dec + 3) << setprecision(double_dec)
+         << log10(exp(1)) * ln_dos[ee] << " "
+         << setw(double_dec + 3) << setprecision(double_dec)
+         << log10(exp(1)) * ln_weights[ee] << endl;
   }
 }
 

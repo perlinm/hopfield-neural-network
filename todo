@@ -1,7 +1,5 @@
 better energy resolution? (factor of 2)
 
-read in transition matrix from file
-
 compute:
  configurational entropy
  internal energy
