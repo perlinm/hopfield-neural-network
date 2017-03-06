@@ -177,29 +177,19 @@ double network_simulation::transition_matrix(const int final_energy,
 // ---------------------------------------------------------------------------------------
 
 // initialize all histograms:
-//   energy histogram, visit log, sample histogram,
-//   state histograms, distance histograms, energy transitions
+//   energy histogram, sample histogram, distance histograms, energy transitions
 void network_simulation::initialize_histograms() {
   energy_histogram = vector<unsigned long long int>(energy_range, 0);
-  state_samples = vector<unsigned long long int>(energy_range, 0);
-  distance_samples = vector<unsigned long long int>(energy_range, 0);
+  distance_records = vector<unsigned long long int>(energy_range, 0);
 
   visit_log = vector<bool>(energy_range, true);
   sample_histogram = vector<unsigned long long int>(energy_range, 0);
 
-  state_histograms = vector<vector<unsigned long long int>>(energy_range);
   distance_histograms = vector<vector<unsigned long long int>>(energy_range);
   transition_histogram = vector<vector<unsigned long long int>>(energy_range);
   for (int ee = 0; ee < energy_range; ee++) {
-    state_histograms[ee] = vector<unsigned long long int>(network.nodes, 0);
     distance_histograms[ee] = vector<unsigned long long int>(pattern_number, 0);
     transition_histogram[ee] = vector<unsigned long long int>(2*max_de + 1, 0);
-  }
-}
-
-void network_simulation::update_state_histograms(const int energy) {
-  for (int ii = 0; ii < network.nodes; ii++) {
-    state_histograms[energy][ii] += state[ii];
   }
 }
 
@@ -529,26 +519,6 @@ void network_simulation::print_energy_data() const {
   }
 }
 
-// print expectation value of each spin spin at each energy
-void network_simulation::print_expected_states() const {
-  cout << "energy <s_1>, <s_2>, ..., <s_n>" << endl;
-  const int energy_width = log10(network.max_energy) + 2;
-  const int state_dec = 6;
-  cout << setprecision(state_dec);
-  for (int ee = energy_range - 1; ee >= 0; ee--) {
-    // check that we have sampled this energy
-    const int observations = state_samples[ee];
-    if (observations == 0) continue;
-
-    cout << setw(energy_width) << ee * network.energy_scale - network.max_energy;
-    for (int ii = 0; ii < network.nodes; ii++) {
-      cout << " " << setw(state_dec + 3)
-           << double(state_histograms[ee][ii]) / observations;
-    }
-    cout << endl;
-  }
-}
-
 // print expectation value of distances from each pattern at each energy
 void network_simulation::print_distances() const {
   cout << "energy <d_1>, <d_2>, ..., <d_p>" << endl;
@@ -556,7 +526,7 @@ void network_simulation::print_distances() const {
   const int distance_dec = 6;
   for (int ee = energy_range - 1; ee >= 0; ee--) {
     // check that we have sampled this energy
-    const unsigned long long int observations = distance_samples[ee];
+    const unsigned long long int observations = distance_records[ee];
     if (observations == 0) continue;
 
     cout << setw(energy_width) << ee * network.energy_scale - network.max_energy;

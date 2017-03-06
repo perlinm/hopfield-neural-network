@@ -70,21 +70,14 @@ struct network_simulation {
   // histogram containing the number of times we have seen every energy
   vector<unsigned long long int> energy_histogram;
 
-  // stores the number of times a node has been +1 at each energy
-  // indexed by (energy, node)
-  // up to the distinction between bools and +/-1, dividing state_histogram[ee][ii]
-  //   by energy_histogram[ee] tells us the mean state of node ii at an energy ee
-  vector<vector<unsigned long long int>> state_histograms;
-
   // stores the sum of all distances from every pattern at each energy
   // indexed by (energy, pattern)
   // dividing distance_histogram[ee][pp] by energy_histogram[ee] tells us
   //   the mean distance from pattern pp at the energy ee
   vector<vector<unsigned long long int>> distance_histograms;
 
-  // number of times we have sampled states or distance at a given energy
-  vector<unsigned long long int> state_samples;
-  vector<unsigned long long int> distance_samples;
+  // number of times we have recorded distance at a given energy
+  vector<unsigned long long int> distance_records;
 
   // stores the number times we have proposed a move
   //   from a given energy with a specified energy difference
@@ -135,12 +128,10 @@ struct network_simulation {
   int energy() const { return energy(state); };
 
   // initialize all histograms:
-  //   energy histogram, visit log, sample histogram,
-  //   state histograms, distance histograms, transition histogram
+  //   energy histogram, sample histogram, distance histograms, energy transitions
   void initialize_histograms();
 
   // update histograms with an observation
-  void update_state_histograms(const int energy);
   void update_distance_histograms(const vector<bool>& state, const int energy);
   void update_sample_histogram(const int new_energy, const int old_energy);
   void update_transition_histogram(const int energy, const int energy_change);

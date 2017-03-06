@@ -511,14 +511,10 @@ int main(const int arg_num, const char *arg_vec[]) {
     // update histograms which take O(X) time to update every X moves;
     //   otherwise we will be asymptotically spending all of simulation
     //   time on these updates
-    if (ii % ns.network.nodes == 0) {
-      ns.state_samples[new_energy]++;
-      ns.update_state_histograms(new_energy);
-      if (ii % (ns.network.nodes * ns.pattern_number) == 0) {
-        ns.distance_samples[new_energy]++;
-        ns.update_distance_histograms(ns.state, new_energy);
+    if (ii % (ns.network.nodes * ns.pattern_number) == 0) {
+      ns.distance_records[new_energy]++;
+      ns.update_distance_histograms(ns.state, new_energy);
       }
-    }
 
     // update the old energy
     old_energy = new_energy;
@@ -530,8 +526,6 @@ int main(const int arg_num, const char *arg_vec[]) {
   if (debug) {
     cout << endl;
     ns.print_energy_data();
-    cout << endl;
-    ns.print_expected_states();
     cout << endl;
     ns.print_distances();
     cout << endl;
@@ -547,10 +541,6 @@ int main(const int arg_num, const char *arg_vec[]) {
   energy_stream << file_header
                 << "# energy, energy histogram, state samples, distance samples" << endl;
 
-  fs::ofstream state_stream(state_file);
-  state_stream << file_header
-               << "# energy, state histogram" << endl;
-
   fs::ofstream distance_stream(distance_file);
   distance_stream << file_header
                   << "# energy, distance histogram" << endl;
@@ -560,14 +550,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
     energy_stream << ee - ns.entropy_peak << " "
                   << ns.energy_histogram[ee] << " "
-                  << ns.state_samples[ee] << " "
-                  << ns.distance_samples[ee] << endl;
-
-    state_stream << ee - ns.entropy_peak;
-    for (int ii = 0; ii < ns.network.nodes; ii++) {
-      state_stream << " " << ns.state_histograms[ee][ii];
-    }
-    state_stream << endl;
+                  << ns.distance_records[ee] << endl;
 
     distance_stream << ee - ns.entropy_peak;
     for (int pp = 0; pp < ns.pattern_number; pp++) {
@@ -577,7 +560,6 @@ int main(const int arg_num, const char *arg_vec[]) {
   }
 
   energy_stream.close();
-  state_stream.close();
   distance_stream.close();
 
 }
