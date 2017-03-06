@@ -543,7 +543,6 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   cout << "writing data files" << endl;
 
-
   fs::ofstream energy_stream(energy_file);
   energy_stream << file_header
                 << "# energy, energy histogram, state samples, distance samples" << endl;
@@ -559,18 +558,18 @@ int main(const int arg_num, const char *arg_vec[]) {
   for (int ee = 0; ee < ns.energy_range; ee++) {
     if (ns.energy_histogram[ee] == 0)  continue;
 
-    energy_stream << ee << " "
+    energy_stream << ee - ns.entropy_peak << " "
                   << ns.energy_histogram[ee] << " "
                   << ns.state_samples[ee] << " "
                   << ns.distance_samples[ee] << endl;
 
-    state_stream << ee;
+    state_stream << ee - ns.entropy_peak;
     for (int ii = 0; ii < ns.network.nodes; ii++) {
       state_stream << " " << ns.state_histograms[ee][ii];
     }
     state_stream << endl;
 
-    distance_stream << ee;
+    distance_stream << ee - ns.entropy_peak;
     for (int pp = 0; pp < ns.pattern_number; pp++) {
       distance_stream << " " << ns.distance_histograms[ee][pp];
     }

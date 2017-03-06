@@ -529,7 +529,7 @@ void network_simulation::print_energy_data() const {
     if (observations == 0) continue;
     cout << fixed
          << setw(energy_width)
-         << ee * network.energy_scale - network.max_energy << " "
+         << (ee - entropy_peak) * network.energy_scale << " "
          << setw(energy_hist_width) << observations << " "
          << setw(sample_width) << sample_histogram[ee] << " "
          << setw(double_dec + 3) << setprecision(double_dec)
@@ -550,7 +550,7 @@ void network_simulation::print_expected_states() const {
     const int observations = state_samples[ee];
     if (observations == 0) continue;
 
-    cout << setw(energy_width) << ee * network.energy_scale - network.max_energy;
+    cout << setw(energy_width) << (ee - entropy_peak) * network.energy_scale;
     for (int ii = 0; ii < network.nodes; ii++) {
       cout << " " << setw(state_dec + 3)
            << double(state_histograms[ee][ii]) / observations;
@@ -569,11 +569,11 @@ void network_simulation::print_distances() const {
     const unsigned long long int observations = distance_samples[ee];
     if (observations == 0) continue;
 
-    cout << setw(energy_width) << ee * network.energy_scale - network.max_energy;
+    cout << setw(energy_width) << (ee - entropy_peak) * network.energy_scale;
     for (int pp = 0; pp < pattern_number; pp++) {
       const double val = double(distance_histograms[ee][pp]) / observations;
       const int prec = distance_dec - int(max(log10(val),0.));
-      cout << " " << setw(distance_dec) << setprecision(prec) << val;
+      cout << " " << setw(distance_dec) << setprecision(prec) << val * 2 / network.nodes;
     }
     cout << endl;
   }
