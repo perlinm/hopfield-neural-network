@@ -373,7 +373,7 @@ void network_simulation::compute_weights_from_dos(const double beta_cap) {
     // if we care about negative temperatures, then we are interested in high energies
     // identify the highest energy we have seen
     int highest_seen_energy = energy_range;
-    for (int ee = energy_range - 1; ee >= 0; ee++) {
+    for (int ee = energy_range - 1; ee >= 0; ee--) {
       if (energy_histogram[ee] != 0) {
         highest_seen_energy = ee;
         break;
