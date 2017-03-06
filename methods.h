@@ -72,9 +72,9 @@ struct network_simulation {
 
   // stores the sum of all distances from every pattern at each energy
   // indexed by (energy, pattern)
-  // dividing distance_histogram[ee][pp] by energy_histogram[ee] tells us
+  // dividing distance_logs[ee][pp] by energy_histogram[ee] tells us
   //   the mean distance from pattern pp at the energy ee
-  vector<vector<unsigned long long int>> distance_histograms;
+  vector<vector<unsigned long long int>> distance_logs;
 
   // number of times we have recorded distance at a given energy
   vector<unsigned long long int> distance_records;
@@ -127,12 +127,11 @@ struct network_simulation {
   int energy(const vector<bool>& state) const { return network.energy(state); };
   int energy() const { return energy(state); };
 
-  // initialize all histograms:
-  //   energy histogram, sample histogram, distance histograms, energy transitions
+  // initialize all tables: distance log, sample histogram, energy transitions
   void initialize_histograms();
 
   // update histograms with an observation
-  void update_distance_histograms(const vector<bool>& state, const int energy);
+  void update_distance_logs(const int energy);
   void update_sample_histogram(const int new_energy, const int old_energy);
   void update_transition_histogram(const int energy, const int energy_change);
 
@@ -149,9 +148,6 @@ struct network_simulation {
   // expectation value of fractional sample error at a given inverse temperature
   // WARNING: assumes that the density of states is up to date
   double fractional_sample_error(const double beta) const;
-
-  // distance between two states
-  int state_distance(const vector<bool>& s1, const vector<bool>& s2);
 
   // -------------------------------------------------------------------------------------
   // Printing methods

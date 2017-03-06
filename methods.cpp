@@ -176,8 +176,7 @@ double network_simulation::transition_matrix(const int final_energy,
 // Methods used in simulation
 // ---------------------------------------------------------------------------------------
 
-// initialize all histograms:
-//   energy histogram, sample histogram, distance histograms, energy transitions
+// initialize all tables: distance log, sample histogram, energy transitions
 void network_simulation::initialize_histograms() {
   energy_histogram = vector<unsigned long long int>(energy_range, 0);
   distance_records = vector<unsigned long long int>(energy_range, 0);
@@ -185,18 +184,25 @@ void network_simulation::initialize_histograms() {
   visit_log = vector<bool>(energy_range, true);
   sample_histogram = vector<unsigned long long int>(energy_range, 0);
 
-  distance_histograms = vector<vector<unsigned long long int>>(energy_range);
+  distance_logs = vector<vector<unsigned long long int>>(energy_range);
   transition_histogram = vector<vector<unsigned long long int>>(energy_range);
   for (int ee = 0; ee < energy_range; ee++) {
-    distance_histograms[ee] = vector<unsigned long long int>(pattern_number, 0);
+    distance_logs[ee] = vector<unsigned long long int>(pattern_number, 0);
     transition_histogram[ee] = vector<unsigned long long int>(2*max_de + 1, 0);
   }
 }
 
-void network_simulation::update_distance_histograms(const vector<bool>& state,
-                                                    const int energy) {
+void network_simulation::update_distance_logs(const int energy) {
+  // for each pattern
   for (int pp = 0; pp < pattern_number; pp++) {
-    distance_histograms[energy][pp] += state_distance(state,patterns[pp]);
+    // find the distance between the current state and patterns[pp]
+    int overlap = 0;
+    for (int ii = 0; ii < network.nodes; ii++) {
+      overlap += (state[ii] == patterns[pp][ii]);
+    }
+    const int distance = min(overlap, network.nodes - overlap);
+    // add distance from pattern[pp] to the distance histogram
+    distance_logs[energy][pp] += distance;
   }
 }
 
@@ -440,15 +446,6 @@ double network_simulation::fractional_sample_error(const double beta_cap) const 
   return error/normalization;
 }
 
-// distance between two states
-int network_simulation::state_distance(const vector<bool>& s1, const vector<bool>& s2) {
-  int overlap = 0;
-  for (int ii = 0; ii < network.nodes; ii++) {
-    overlap += (s1[ii] == s2[ii]);
-  }
-  return min(overlap, network.nodes - overlap);
-}
-
 // ---------------------------------------------------------------------------------------
 // Printing methods
 // ---------------------------------------------------------------------------------------
@@ -531,7 +528,7 @@ void network_simulation::print_distances() const {
 
     cout << setw(energy_width) << ee * network.energy_scale - network.max_energy;
     for (int pp = 0; pp < pattern_number; pp++) {
-      const double val = double(distance_histograms[ee][pp]) / observations;
+      const double val = double(distance_logs[ee][pp]) / observations;
       const int prec = distance_dec - int(max(log10(val),0.));
       cout << " " << setw(distance_dec) << setprecision(prec) << val * 2 / network.nodes;
     }

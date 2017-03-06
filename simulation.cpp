@@ -513,8 +513,8 @@ int main(const int arg_num, const char *arg_vec[]) {
     //   time on these updates
     if (ii % (ns.network.nodes * ns.pattern_number) == 0) {
       ns.distance_records[new_energy]++;
-      ns.update_distance_histograms(ns.state, new_energy);
-      }
+      ns.update_distance_logs(new_energy);
+    }
 
     // update the old energy
     old_energy = new_energy;
@@ -554,7 +554,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
     distance_stream << ee - ns.entropy_peak;
     for (int pp = 0; pp < ns.pattern_number; pp++) {
-      distance_stream << " " << ns.distance_histograms[ee][pp];
+      distance_stream << " " << ns.distance_logs[ee][pp];
     }
     distance_stream << endl;
   }
