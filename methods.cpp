@@ -13,15 +13,6 @@ int gcd(const int a, const int b) {
   else return gcd(b, a % b);
 }
 
-// distance between two states
-int state_distance(const vector<bool>& s1, const vector<bool>& s2) {
-  int overlap = 0;
-  for (int ii = 0, size = s1.size(); ii < size; ii++) {
-    overlap += (s1[ii] == s2[ii]);
-  }
-  return s1.size() - overlap;
-}
-
 // generate a random state
 vector<bool> random_state(const int nodes, uniform_real_distribution<double>& rnd,
                           mt19937_64& generator) {
@@ -467,6 +458,15 @@ double network_simulation::fractional_sample_error(const double beta_cap) const 
     }
   }
   return error/normalization;
+}
+
+// distance between two states
+int network_simulation::state_distance(const vector<bool>& s1, const vector<bool>& s2) {
+  int overlap = 0;
+  for (int ii = 0; ii < network.nodes; ii++) {
+    overlap += (s1[ii] == s2[ii]);
+  }
+  return min(overlap, network.nodes - overlap);
 }
 
 // ---------------------------------------------------------------------------------------

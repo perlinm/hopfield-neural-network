@@ -262,11 +262,11 @@ int main(const int arg_num, const char *arg_vec[]) {
   stringstream file_header_stream;
   file_header_stream << "# nodes: " << ns.network.nodes << endl
                      << "# patterns: " << ns.pattern_number << endl
-                     << "# energy scale: " << ns.network.energy_scale << endl
+                     << "# energy_scale: " << ns.network.energy_scale << endl
                      << "# energy_range: " << ns.energy_range << endl
                      << "# max_de: " << ns.max_de << endl
-                     << "# beta cap: " << input_beta_cap << endl
-                     << "# target sample error: " << target_sample_error << endl
+                     << "# beta_cap: " << input_beta_cap << endl
+                     << "# target_sample_error: " << target_sample_error << endl
                      << endl;
   const string file_header = file_header_stream.str();
 

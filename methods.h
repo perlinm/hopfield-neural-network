@@ -7,9 +7,6 @@ using namespace std;
 // greatest common divisor
 int gcd(const int a, const int b);
 
-// distance between two states
-int state_distance(const vector<bool>& s1, const vector<bool>& s2);
-
 // generate a random state
 vector<bool> random_state(const int nodes, uniform_real_distribution<double>& rnd,
                           mt19937_64& generator);
@@ -161,6 +158,9 @@ struct network_simulation {
   // expectation value of fractional sample error at a given inverse temperature
   // WARNING: assumes that the density of states is up to date
   double fractional_sample_error(const double beta) const;
+
+  // distance between two states
+  int state_distance(const vector<bool>& s1, const vector<bool>& s2);
 
   // -------------------------------------------------------------------------------------
   // Printing methods
