@@ -79,6 +79,7 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
     max_energy_change = max(2*node_energy, max_energy_change);
     energy_scale = gcd(node_energy, energy_scale);
   }
+  max_energy -= (max_energy % energy_scale);
 
 };
 
@@ -335,6 +336,9 @@ void network_simulation::compute_dos_from_energy_histogram() {
 // WARNING: assumes that the density of states is up to date
 void network_simulation::compute_weights_from_dos(const double beta_cap) {
 
+  // reset the weight array
+  ln_weights = vector<double>(energy_range, 0);
+
   if (beta_cap > 0) {
     // if we care about positive temperatures, then we are interested in low energies
     // identify the lowest energy we have seen
@@ -350,7 +354,6 @@ void network_simulation::compute_weights_from_dos(const double beta_cap) {
     //   but never set any weight higher than we would at an inverse temperature beta_cap
     double excess_weight = 0;
     const double max_diff = energy_range * beta_cap;
-    ln_weights[entropy_peak] = -ln_dos[entropy_peak];
     for (int ee = entropy_peak - 1; ee >= lowest_seen_energy; ee--) {
       ln_weights[ee] = -ln_dos[ee];
       const double diff = ln_weights[ee] - ln_weights[ee+1];
@@ -363,12 +366,6 @@ void network_simulation::compute_weights_from_dos(const double beta_cap) {
     for (int ee = lowest_seen_energy - 1; ee >= 0; ee--) {
       ln_weights[ee] = (-ln_dos[lowest_seen_energy]
                         - abs(lowest_seen_energy - ee) * beta_cap);
-    }
-    // as we don't care about energies above the entropy peak,
-    //   we don't want to spend more time on them than we need to,
-    //   so use flat (zero beta, infinite temperature) weights at these energies
-    for (int ee = energy_range - 1; ee > entropy_peak; ee--) {
-      ln_weights[ee] = -ln_dos[entropy_peak];
     }
 
   } else { // if beta_cap < 0
@@ -387,7 +384,6 @@ void network_simulation::compute_weights_from_dos(const double beta_cap) {
     //   but never set any weight higher than we would at an inverse temperature beta_cap
     double excess_weight = 0;
     const double max_diff = - energy_range * beta_cap;
-    ln_weights[entropy_peak] = -ln_dos[entropy_peak];
     for (int ee = entropy_peak + 1; ee <= highest_seen_energy; ee++) {
       ln_weights[ee] = -ln_dos[ee];
       const double diff = ln_weights[ee] - ln_weights[ee-1];
@@ -400,12 +396,6 @@ void network_simulation::compute_weights_from_dos(const double beta_cap) {
     for (int ee = highest_seen_energy + 1; ee < energy_range; ee++) {
       ln_weights[ee] = (-ln_dos[highest_seen_energy]
                         - abs(highest_seen_energy - ee) * beta_cap);
-    }
-    // as we don't care about energies below the entropy peak,
-    //   we don't want to spend more time on them than we need to,
-    //   so use flat (zero beta, infinite temperature) weights at these energies
-    for (int ee = 0; ee < entropy_peak; ee++) {
-      ln_weights[ee] = -ln_dos[entropy_peak];
     }
   }
 
@@ -534,7 +524,7 @@ void network_simulation::print_energy_data() const {
          << setw(sample_width) << sample_histogram[ee] << " "
          << setw(double_dec + 3) << setprecision(double_dec)
          << log10(exp(1)) * ln_dos[ee] << " "
-         << setw(double_dec + 3) << setprecision(double_dec)
+         << setw(double_dec + 2) << setprecision(double_dec)
          << log10(exp(1)) * ln_weights[ee] << endl;
   }
 }
