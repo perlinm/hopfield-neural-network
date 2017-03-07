@@ -161,7 +161,7 @@ struct network_simulation {
   void write_energy_file(const fs::path energy_file, const string file_header) const;
   void write_distance_file(const fs::path distance_file, const string file_header) const;
 
-  void read_weights_file(const fs::path weights_file);
+  void read_weights_file(const fs::path weights_file, const double beta_cap);
 
   // -------------------------------------------------------------------------------------
   // Printing methods

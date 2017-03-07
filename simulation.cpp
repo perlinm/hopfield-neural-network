@@ -118,6 +118,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Process and run sanity checks on inputs
   // -------------------------------------------------------------------------------------
 
+  if (input_beta_cap == 0) fixed_temp = true;
+
   // we should have at least two nodes, and at least one pattern
   if (nodes < 2) {
     cout << "the network should consist of at least two nodes" << endl;
@@ -412,7 +414,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
     } else { // the weights file already exists, so read it in
 
-      ns.read_weights_file(weights_file);
+      ns.read_weights_file(weights_file, beta_cap);
 
     }
 

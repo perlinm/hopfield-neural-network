@@ -521,7 +521,12 @@ void network_simulation::write_distance_file(const fs::path distance_file,
   distance_stream.close();
 }
 
-void network_simulation::read_weights_file(const fs::path weights_file) {
+void network_simulation::read_weights_file(const fs::path weights_file,
+                                           const double beta_cap) {
+  // keep track of first and last zeroes in ln_weights to identify the entropy peak
+  bool first_zero_unset = true;
+  int first_zero, last_zero;
+
   cout << "reading in weight array from file" << endl;
   ifstream input(weights_file.c_str());
   string line;
@@ -533,7 +538,22 @@ void network_simulation::read_weights_file(const fs::path weights_file) {
     const int ee = (stoi(word) + network.max_energy) / network.energy_scale;
     energy_histogram[ee]++; // mark this energy as seen
     line_stream >> word;
-    ln_weights[ee] += stod(word);
+    const double weight = stod(word);
+    if (weight == 0) {
+      if (first_zero_unset) {
+        first_zero_unset = false;
+        first_zero = ee;
+      }
+      last_zero = ee;
+    }
+    ln_weights[ee] = weight;
+  }
+
+  // set entropy peak
+  if (beta_cap > 0) {
+    entropy_peak = first_zero;
+  } else {
+    entropy_peak = last_zero;
   }
 }
 
