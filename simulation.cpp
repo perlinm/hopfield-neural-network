@@ -535,24 +535,24 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Write data files
   // -------------------------------------------------------------------------------------
 
-  cout << "writing data files" << endl;
+  cout << "writing simulation data files" << endl;
 
   fs::ofstream energy_stream(energy_file);
   energy_stream << file_header
-                << "# energy, energy histogram, state samples, distance samples" << endl;
+                << "# energy, energy histogram" << endl;
 
   fs::ofstream distance_stream(distance_file);
   distance_stream << file_header
-                  << "# energy, distance histogram" << endl;
+                  << "# energy, distance records, distance log..." << endl;
 
   for (int ee = 0; ee < ns.energy_range; ee++) {
     if (ns.energy_histogram[ee] == 0)  continue;
 
-    energy_stream << ee * ns.network.energy_scale - ns.network.max_energy << " "
-                  << ns.energy_histogram[ee] << " "
-                  << ns.distance_records[ee] << endl;
+    energy_stream << ee * ns.network.energy_scale - ns.network.max_energy
+                  << " " << ns.energy_histogram[ee] << endl;
 
-    distance_stream << ee * ns.network.energy_scale - ns.network.max_energy;
+    distance_stream << ee * ns.network.energy_scale - ns.network.max_energy
+                    << " " << ns.distance_records[ee];
     for (int pp = 0; pp < ns.pattern_number; pp++) {
       distance_stream << " " << ns.distance_logs[ee][pp];
     }
