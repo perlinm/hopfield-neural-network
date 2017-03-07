@@ -432,7 +432,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Run simulation
   // -------------------------------------------------------------------------------------
 
-  cout << endl << "starting simulation" << endl << endl;
+  cout << "starting simulation" << endl << endl;
 
   int new_energy; // energy of the state we move into
   int old_energy = ns.energy(); // energy of the last state

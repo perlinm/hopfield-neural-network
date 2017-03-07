@@ -83,15 +83,13 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
     max_energy_change = max(2*node_energy, max_energy_change);
     energy_scale = gcd(node_energy, energy_scale);
   }
-  max_energy -= (max_energy % energy_scale);
+  max_energy -= (max_energy/2 % energy_scale);
 
 };
 
 // energy of the network in a given state
 // note: this energy is equal to the "actual" energy (by the normal definition)
-//       multiplied by a factor of (nodes/energy_scale),
-//       and shifted down by a small, but constant amount determined
-//       by our energy resolution
+//       multiplied by a factor of (nodes/energy_scale)
 int hopfield_network::energy(const vector<bool>& state) const {
   int energy = 0;
   for (int ii = 0; ii < nodes; ii++) {
