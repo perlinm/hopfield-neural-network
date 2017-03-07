@@ -548,11 +548,11 @@ int main(const int arg_num, const char *arg_vec[]) {
   for (int ee = 0; ee < ns.energy_range; ee++) {
     if (ns.energy_histogram[ee] == 0)  continue;
 
-    energy_stream << ee - ns.entropy_peak << " "
+    energy_stream << ee * ns.network.energy_scale - ns.network.max_energy << " "
                   << ns.energy_histogram[ee] << " "
                   << ns.distance_records[ee] << endl;
 
-    distance_stream << ee - ns.entropy_peak;
+    distance_stream << ee * ns.network.energy_scale - ns.network.max_energy;
     for (int pp = 0; pp < ns.pattern_number; pp++) {
       distance_stream << " " << ns.distance_logs[ee][pp];
     }
