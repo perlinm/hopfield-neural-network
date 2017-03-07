@@ -240,9 +240,9 @@ int main(const int arg_num, const char *arg_vec[]) {
                               + to_string(hash) + ".txt");
 
   // paths to data files
-  const fs::path transition_file
+  const fs::path transitions_file
     = fs::path(data_dir) / fs::path("transitions" + file_suffix);
-  const fs::path weight_file
+  const fs::path weights_file
     = fs::path(data_dir) / fs::path("weights" + file_suffix);
   const fs::path energy_file
     = fs::path(data_dir) / fs::path("energies" + file_suffix);
@@ -299,12 +299,12 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   } else { // run an all temperature simulation
 
-    // if there is no file containing the weights we need,
+    // if there is no file which already contains the weights we need,
     //   run the standard initialization routine
-    if (!fs::exists(weight_file)) {
+    if (!fs::exists(weights_file)) {
 
-      cout << "starting initialization routine for an all-temperature simulation..."
-           << endl << "sample_error cycle_number" << endl;
+      cout << "starting all-temperature initialization routine..." << endl
+           << "sample_error cycle_number" << endl;
 
       // number of initialization cycles we have finished
       int cycles = 0;
@@ -405,63 +405,18 @@ int main(const int arg_num, const char *arg_vec[]) {
 
       cout << endl;
 
-      // write transition matrix to a file
-      fs::ofstream transition_stream(transition_file);
-      transition_stream << file_header
-             << "# (row)x(column) = (energy)x(de)" << endl;
-      for (int ee = 0; ee < ns.energy_range; ee++) {
-        if (ns.energy_histogram[ee] == 0) continue;
+      ns.compute_weights_from_dos(beta_cap);
 
-        transition_stream << ee * ns.network.energy_scale - ns.network.max_energy
-                          << " " << ns.transitions(ee, -ns.max_de);
-        for (int de = -ns.max_de + 1; de <= ns.max_de; de++) {
-          transition_stream << " " << ns.transitions(ee, de);
-        }
-        transition_stream << endl;
-      }
-      transition_stream.close();
+      ns.write_transitions_file(transitions_file, file_header);
+      ns.write_weights_file(weights_file, file_header);
 
-    } else { // if the transition matrix we need is already exists, read it in
+    } else { // the weights file already exists, so read it in
 
-      cout << "reading in transition matrix" << endl;
-
-      ifstream input(transition_file.c_str());
-      string line;
-      string word;
-
-      // loop over lines
-      while (getline(input,line)) {
-        if (line[0] == '#' || line.empty()) continue;
-        stringstream line_stream(line);
-        line_stream >> word;
-        const int ee = (stoi(word) + ns.network.max_energy) / ns.network.energy_scale;
-        ns.energy_histogram[ee]++;
-        for (int dd = 0; dd < 2*ns.max_de + 1 ; dd++) {
-          line_stream >> word;
-          ns.transition_histogram[ee][dd] = stoi(word);
-        }
-      }
-
-      // compute density of states from the transition matrix we read in
-      ns.compute_dos_from_transitions();
+      ns.read_weights_file(weights_file);
 
     }
 
-    // compute weights appropriately
-    ns.compute_weights_from_dos(beta_cap);
-
-  }
-
-  // print weight file
-  fs::ofstream weight_stream(weight_file);
-  weight_stream << file_header << "# energy, ln_weight" << endl;
-  for (int ee = 0; ee < ns.energy_range; ee++) {
-    if (ns.energy_histogram[ee] == 0) continue;
-    weight_stream << setprecision(numeric_limits<double>::max_digits10)
-                  << ee * ns.network.energy_scale - ns.network.max_energy
-                  << " " << ns.ln_weights[ee] << endl;
-  }
-  weight_stream.close();
+  } // complete construction of weights
 
   if (debug) {
     ns.print_energy_data();
@@ -469,6 +424,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   }
 
   // initialize a new random state and clear the histograms
+  generator.seed(seed+1);
   ns.state = random_state(nodes, rnd, generator);
   ns.initialize_histograms();
 
@@ -476,7 +432,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Run simulation
   // -------------------------------------------------------------------------------------
 
-  cout << "starting simulation" << endl;
+  cout << endl << "starting simulation" << endl << endl;
 
   int new_energy; // energy of the state we move into
   int old_energy = ns.energy(); // energy of the last state
@@ -517,8 +473,9 @@ int main(const int arg_num, const char *arg_vec[]) {
     old_energy = new_energy;
   }
 
-  // compute the density of states
-  ns.compute_dos_from_energy_histogram();
+  // write data files
+  ns.write_energy_file(energy_file, file_header);
+  ns.write_distance_file(distance_file, file_header);
 
   if (debug) {
     cout << endl;
@@ -527,34 +484,5 @@ int main(const int arg_num, const char *arg_vec[]) {
     ns.print_distances();
     cout << endl;
   }
-
-  // -------------------------------------------------------------------------------------
-  // Write data files
-  // -------------------------------------------------------------------------------------
-
-  cout << "writing simulation data files" << endl;
-
-  fs::ofstream energy_stream(energy_file);
-  energy_stream << file_header << "# energy, energy histogram" << endl;
-
-  fs::ofstream distance_stream(distance_file);
-  distance_stream << file_header << "# energy, distance records, distance log..." << endl;
-
-  for (int ee = 0; ee < ns.energy_range; ee++) {
-    if (ns.energy_histogram[ee] == 0)  continue;
-
-    energy_stream << ee * ns.network.energy_scale - ns.network.max_energy
-                  << " " << ns.energy_histogram[ee] << endl;
-
-    distance_stream << ee * ns.network.energy_scale - ns.network.max_energy
-                    << " " << ns.distance_records[ee];
-    for (int pp = 0; pp < ns.pattern_number; pp++) {
-      distance_stream << " " << ns.distance_logs[ee][pp];
-    }
-    distance_stream << endl;
-  }
-
-  energy_stream.close();
-  distance_stream.close();
 
 }

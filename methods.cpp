@@ -1,11 +1,15 @@
 #include <iostream> // for standard output
 #include <iomanip> // for io manipulation (e.g. setw)
 #include <random> // for randomness
+#include <sstream> // for string streams
 #include <algorithm> // for sort method
+
+#include <boost/filesystem.hpp> // filesystem path manipulation library
 
 #include "methods.h"
 
 using namespace std;
+namespace fs = boost::filesystem;
 
 // greatest common divisor
 int gcd(const int a, const int b) {
@@ -444,6 +448,91 @@ double network_simulation::fractional_sample_error(const double beta_cap) const 
     }
   }
   return error/normalization;
+}
+
+// ---------------------------------------------------------------------------------------
+// Writing/reading data files
+// ---------------------------------------------------------------------------------------
+
+void network_simulation::write_transitions_file(const fs::path transitions_file,
+                                                const string file_header) const {
+  cout << "writing transition matrix to a file" << endl;
+  fs::ofstream transition_stream(transitions_file);
+  transition_stream << file_header
+                    << "# (row)x(column) = (energy)x(de)" << endl;
+  for (int ee = 0; ee < energy_range; ee++) {
+    if (energy_histogram[ee] == 0) continue;
+    transition_stream << ee * network.energy_scale - network.max_energy
+                      << " " << transitions(ee, -max_de);
+    for (int de = -max_de + 1; de <= max_de; de++) {
+      transition_stream << " " << transitions(ee, de);
+    }
+    transition_stream << endl;
+  }
+  transition_stream.close();
+}
+
+void network_simulation::write_weights_file(const fs::path weights_file,
+                                            const string file_header) const {
+  cout << "writing weight array to a file" << endl;
+  fs::ofstream weight_stream(weights_file);
+  weight_stream << file_header
+                << "# energy, ln_weight" << endl;
+  for (int ee = 0; ee < energy_range; ee++) {
+    if (energy_histogram[ee] == 0) continue;
+    weight_stream << setprecision(numeric_limits<double>::max_digits10)
+                  << ee * network.energy_scale - network.max_energy
+                  << " " << ln_weights[ee] << endl;
+  }
+  weight_stream.close();
+}
+
+void network_simulation::write_energy_file(const fs::path energy_file,
+                                           const string file_header) const {
+  cout << "writing energy histogram to a file" << endl;
+  fs::ofstream energy_stream(energy_file);
+  energy_stream << file_header
+                << "# energy, energy histogram" << endl;
+  for (int ee = 0; ee < energy_range; ee++) {
+    if (energy_histogram[ee] == 0)  continue;
+    energy_stream << ee * network.energy_scale - network.max_energy
+                  << " " << energy_histogram[ee] << endl;
+  }
+  energy_stream.close();
+}
+
+void network_simulation::write_distance_file(const fs::path distance_file,
+                                              const string file_header) const {
+  cout << "writing distance log to a file" << endl;
+  fs::ofstream distance_stream(distance_file);
+  distance_stream << file_header
+                  << "# energy, distance records, distance log..." << endl;
+  for (int ee = 0; ee < energy_range; ee++) {
+    if (energy_histogram[ee] == 0)  continue;
+    distance_stream << ee * network.energy_scale - network.max_energy
+                    << " " << distance_records[ee];
+    for (int pp = 0; pp < pattern_number; pp++) {
+      distance_stream << " " << distance_logs[ee][pp];
+    }
+    distance_stream << endl;
+  }
+  distance_stream.close();
+}
+
+void network_simulation::read_weights_file(const fs::path weights_file) {
+  cout << "reading in weight array from file" << endl;
+  ifstream input(weights_file.c_str());
+  string line;
+  string word;
+  while (getline(input,line)) {
+    if (line[0] == '#' || line.empty()) continue;
+    stringstream line_stream(line);
+    line_stream >> word;
+    const int ee = (stoi(word) + network.max_energy) / network.energy_scale;
+    energy_histogram[ee]++; // mark this energy as seen
+    line_stream >> word;
+    ln_weights[ee] += stod(word);
+  }
 }
 
 // ---------------------------------------------------------------------------------------
