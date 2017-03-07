@@ -253,8 +253,6 @@ int main(const int arg_num, const char *arg_vec[]) {
     = fs::path(data_dir) / fs::path("transitions" + file_suffix);
   const fs::path energy_file
     = fs::path(data_dir) / fs::path("energies" + file_suffix);
-  const fs::path state_file
-    = fs::path(data_dir) / fs::path("states" + file_suffix);
   const fs::path distance_file
     = fs::path(data_dir) / fs::path("distances" + file_suffix);
 
