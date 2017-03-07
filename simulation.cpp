@@ -51,7 +51,6 @@ int main(const int arg_num, const char *arg_vec[]) {
      "input file containing patterns stored in the neural network")
     ;
 
-  bool all_temps;
   bool fixed_temp;
   double input_beta_cap;
   int init_factor;
@@ -60,8 +59,6 @@ int main(const int arg_num, const char *arg_vec[]) {
   po::options_description simulation_options("General simulation options",
                                              help_text_length);
   simulation_options.add_options()
-    ("all_T", po::value<bool>(&all_temps)->default_value(false)->implicit_value(true),
-     "run an all-temperature simulation")
     ("fixed_T", po::value<bool>(&fixed_temp)->default_value(false)->implicit_value(true),
      "run a fixed-temperature simulation")
     ("beta_cap", po::value<double>(&input_beta_cap)->default_value(1),
@@ -136,13 +133,6 @@ int main(const int arg_num, const char *arg_vec[]) {
   if (!nodes && pattern_file.empty()) {
     cout << "either choose a size (number of nodes) for a network"
          << " with random patterns, or provide a pattern file" << endl;
-    return -1;
-  }
-
-  // we must run either an all-temperature or a fixed-temperature simulation
-  if (all_temps + fixed_temp != 1) {
-    cout << "you need to choose whether to run a all- "
-         << " or fixed-temperature simulation" << endl;
     return -1;
   }
 
@@ -227,7 +217,7 @@ int main(const int arg_num, const char *arg_vec[]) {
        << "inverse temperature: " << input_beta_cap << endl
        << endl;
 
-  // make a hash of the patterns to identify this network
+  // make a hash of the patterns and target sample error to identify this simulation
   const size_t hash = [&]() -> size_t {
     size_t running_hash = 0;
     for (int pp = 0; pp < ns.pattern_number; pp++) {
@@ -241,7 +231,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   }();
 
   // suffix to all data files read/written by this simulation
-  const string beta_tag = ("-B" + string(input_beta_cap < 0 ? "n" : "")
+  const string beta_tag = ("-" + string(fixed_temp ? "f" : "") + "B"
+                           + string(input_beta_cap < 0 ? "n" : "")
                            + to_string(int(round(abs(input_beta_cap)))));
   const string node_tag = "-N" + to_string(ns.network.nodes);
   const string pattern_tag = "-P" + to_string(ns.pattern_number);
@@ -251,6 +242,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   // paths to data files
   const fs::path transition_file
     = fs::path(data_dir) / fs::path("transitions" + file_suffix);
+  const fs::path weight_file
+    = fs::path(data_dir) / fs::path("weights" + file_suffix);
   const fs::path energy_file
     = fs::path(data_dir) / fs::path("energies" + file_suffix);
   const fs::path distance_file
@@ -284,11 +277,6 @@ int main(const int arg_num, const char *arg_vec[]) {
 
     cout << "initializing a fixed temperature simulation" << endl << endl;
 
-    // for a fixed (or infinite) temperature simulation, use boltzmann weights
-    for (int ee = 0; ee < ns.energy_range; ee++) {
-      ns.ln_weights[ee] = -ee * beta_cap;
-    }
-
     // run for one initialization cycle in order to locate the entropy peak
     for (int ii = 0; ii < iterations_per_cycle; ii++) {
 
@@ -304,11 +292,16 @@ int main(const int arg_num, const char *arg_vec[]) {
       }
     }
 
-  } else if (all_temps) {
+    // for a fixed (or infinite) temperature simulation, use boltzmann weights
+    for (int ee = 0; ee < ns.energy_range; ee++) {
+      ns.ln_weights[ee] = -(ee-ns.entropy_peak) * beta_cap;
+    }
 
-    // if there is no file containing the transition matrix we need,
+  } else { // run an all temperature simulation
+
+    // if there is no file containing the weights we need,
     //   run the standard initialization routine
-    if (!fs::exists(transition_file)) {
+    if (!fs::exists(weight_file)) {
 
       cout << "starting initialization routine for an all-temperature simulation..."
            << endl << "sample_error cycle_number" << endl;
@@ -419,7 +412,8 @@ int main(const int arg_num, const char *arg_vec[]) {
       for (int ee = 0; ee < ns.energy_range; ee++) {
         if (ns.energy_histogram[ee] == 0) continue;
 
-        transition_stream << ee << " " << ns.transitions(ee, -ns.max_de);
+        transition_stream << ee * ns.network.energy_scale - ns.network.max_energy
+                          << " " << ns.transitions(ee, -ns.max_de);
         for (int de = -ns.max_de + 1; de <= ns.max_de; de++) {
           transition_stream << " " << ns.transitions(ee, de);
         }
@@ -440,7 +434,7 @@ int main(const int arg_num, const char *arg_vec[]) {
         if (line[0] == '#' || line.empty()) continue;
         stringstream line_stream(line);
         line_stream >> word;
-        const int ee = stoi(word);
+        const int ee = (stoi(word) + ns.network.max_energy) / ns.network.energy_scale;
         ns.energy_histogram[ee]++;
         for (int dd = 0; dd < 2*ns.max_de + 1 ; dd++) {
           line_stream >> word;
@@ -458,11 +452,16 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   }
 
-  // for human readability, normalize the weights at the entropy peak
-  // normalize the weight array at the entropy peak
+  // print weight file
+  fs::ofstream weight_stream(weight_file);
+  weight_stream << file_header << "# energy, ln_weight" << endl;
   for (int ee = 0; ee < ns.energy_range; ee++) {
-    ns.ln_weights[ee] -= ns.ln_weights[ns.entropy_peak];
+    if (ns.energy_histogram[ee] == 0) continue;
+    weight_stream << setprecision(numeric_limits<double>::max_digits10)
+                  << ee * ns.network.energy_scale - ns.network.max_energy
+                  << " " << ns.ln_weights[ee] << endl;
   }
+  weight_stream.close();
 
   if (debug) {
     ns.print_energy_data();
@@ -536,12 +535,10 @@ int main(const int arg_num, const char *arg_vec[]) {
   cout << "writing simulation data files" << endl;
 
   fs::ofstream energy_stream(energy_file);
-  energy_stream << file_header
-                << "# energy, energy histogram" << endl;
+  energy_stream << file_header << "# energy, energy histogram" << endl;
 
   fs::ofstream distance_stream(distance_file);
-  distance_stream << file_header
-                  << "# energy, distance records, distance log..." << endl;
+  distance_stream << file_header << "# energy, distance records, distance log..." << endl;
 
   for (int ee = 0; ee < ns.energy_range; ee++) {
     if (ns.energy_histogram[ee] == 0)  continue;
