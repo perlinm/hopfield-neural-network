@@ -37,12 +37,11 @@ struct hopfield_network {
   // hopfield network constructor
   hopfield_network(const vector<vector<bool>>& patterns);
 
-  // energy of the network in a given state
-  // note: this energy is equal to the "actual" energy (by the normal definition)
-  //       multiplied by a factor of (nodes/energy_scale),
-  //       and shifted down by a small, but constant amount determined
-  //       by our energy resolution
+  // (index of) energy of the network in a given state
   int energy(const vector<bool>& state) const;
+
+  // convert energy index to an "actual" energy
+  int actual_energy(const int energy_index) const;
 
   // print coupling matrix
   void print_couplings() const;

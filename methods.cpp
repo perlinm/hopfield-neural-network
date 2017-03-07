@@ -87,9 +87,7 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
 
 };
 
-// energy of the network in a given state
-// note: this energy is equal to the "actual" energy (by the normal definition)
-//       multiplied by a factor of (nodes/energy_scale)
+// (index of) energy of the network in a given state
 int hopfield_network::energy(const vector<bool>& state) const {
   int energy = 0;
   for (int ii = 0; ii < nodes; ii++) {
@@ -98,6 +96,11 @@ int hopfield_network::energy(const vector<bool>& state) const {
     }
   }
   return (energy + max_energy) / energy_scale;
+}
+
+// convert energy index to an "actual" energy
+int hopfield_network::actual_energy(const int energy_index) const {
+  return energy_index * energy_scale - max_energy;
 }
 
 // print coupling matrix
@@ -460,7 +463,7 @@ void network_simulation::write_transitions_file(const fs::path transitions_file,
                     << "# (row)x(column) = (energy)x(de)" << endl;
   for (int ee = 0; ee < energy_range; ee++) {
     if (energy_histogram[ee] == 0) continue;
-    transition_stream << ee * network.energy_scale - network.max_energy
+    transition_stream << network.actual_energy(ee)
                       << " " << transitions(ee, -max_de);
     for (int de = -max_de + 1; de <= max_de; de++) {
       transition_stream << " " << transitions(ee, de);
@@ -479,7 +482,7 @@ void network_simulation::write_weights_file(const fs::path weights_file,
   for (int ee = 0; ee < energy_range; ee++) {
     if (energy_histogram[ee] == 0) continue;
     weight_stream << setprecision(numeric_limits<double>::max_digits10)
-                  << ee * network.energy_scale - network.max_energy << " "
+                  << network.actual_energy(ee) << " "
                   << ln_weights[ee] << endl;
   }
   weight_stream.close();
@@ -493,7 +496,7 @@ void network_simulation::write_energy_file(const fs::path energy_file,
                 << "# energy, energy histogram, sample histogram" << endl;
   for (int ee = 0; ee < energy_range; ee++) {
     if (energy_histogram[ee] == 0)  continue;
-    energy_stream << ee * network.energy_scale - network.max_energy << " "
+    energy_stream << network.actual_energy(ee) << " "
                   << energy_histogram[ee] << " "
                   << sample_histogram[ee] << endl;
   }
@@ -508,7 +511,7 @@ void network_simulation::write_distance_file(const fs::path distance_file,
                   << "# energy, distance records, distance log..." << endl;
   for (int ee = 0; ee < energy_range; ee++) {
     if (energy_histogram[ee] == 0)  continue;
-    distance_stream << ee * network.energy_scale - network.max_energy
+    distance_stream << network.actual_energy(ee)
                     << " " << distance_records[ee];
     for (int pp = 0; pp < pattern_number; pp++) {
       distance_stream << " " << distance_logs[ee][pp];
@@ -560,7 +563,7 @@ void network_simulation::print_patterns() const {
   cout << "(energy, index) pattern" << endl;
   for (int ss = pattern_number - 1; ss >= 0; ss--) {
     cout << "(" << setw(energy_width)
-         << sorted_energies[ss] * network.energy_scale - network.max_energy << ", ";
+         << network.actual_energy(sorted_energies[ss]) << ", ";
     for (int pp = 0; pp < pattern_number; pp++) {
       if (energies[pp] == sorted_energies[ss] && !printed[pp]) {
         cout << setw(index_width) << pp << ")";
@@ -594,7 +597,7 @@ void network_simulation::print_energy_data() const {
     if (observations == 0) continue;
     cout << fixed
          << setw(energy_width)
-         << ee * network.energy_scale - network.max_energy << " "
+         << network.actual_energy(ee) << " "
          << setw(energy_hist_width) << observations << " "
          << setw(sample_width) << sample_histogram[ee] << " "
          << setw(double_dec + 3) << setprecision(double_dec)
@@ -614,7 +617,7 @@ void network_simulation::print_distances() const {
     const unsigned long long int observations = distance_records[ee];
     if (observations == 0) continue;
 
-    cout << setw(energy_width) << ee * network.energy_scale - network.max_energy;
+    cout << setw(energy_width) << network.actual_energy(ee);
     for (int pp = 0; pp < pattern_number; pp++) {
       const double val = double(distance_logs[ee][pp]) / observations;
       const int prec = distance_dec - int(max(log10(val),0.));

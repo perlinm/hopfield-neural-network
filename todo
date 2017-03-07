@@ -1,3 +1,5 @@
+find entropy peak after reading in weights
+
 compute:
  configurational entropy
  internal energy
