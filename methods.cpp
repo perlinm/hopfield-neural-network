@@ -479,8 +479,8 @@ void network_simulation::write_weights_file(const fs::path weights_file,
   for (int ee = 0; ee < energy_range; ee++) {
     if (energy_histogram[ee] == 0) continue;
     weight_stream << setprecision(numeric_limits<double>::max_digits10)
-                  << ee * network.energy_scale - network.max_energy
-                  << " " << ln_weights[ee] << endl;
+                  << ee * network.energy_scale - network.max_energy << " "
+                  << ln_weights[ee] << endl;
   }
   weight_stream.close();
 }
@@ -490,11 +490,12 @@ void network_simulation::write_energy_file(const fs::path energy_file,
   cout << "writing energy histogram to a file" << endl;
   fs::ofstream energy_stream(energy_file);
   energy_stream << file_header
-                << "# energy, energy histogram" << endl;
+                << "# energy, energy histogram, sample histogram" << endl;
   for (int ee = 0; ee < energy_range; ee++) {
     if (energy_histogram[ee] == 0)  continue;
-    energy_stream << ee * network.energy_scale - network.max_energy
-                  << " " << energy_histogram[ee] << endl;
+    energy_stream << ee * network.energy_scale - network.max_energy << " "
+                  << energy_histogram[ee] << " "
+                  << sample_histogram[ee] << endl;
   }
   energy_stream.close();
 }
