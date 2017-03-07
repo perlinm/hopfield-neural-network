@@ -74,13 +74,13 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
   // determine the maximum energy change possible in one move, as well as
   //   the energy resolution (energy_scale) needed to keep track of all energies
   max_energy_change = 0;
-  energy_scale = 2*max_energy;
+  energy_scale = 0;
   for (int ii = 0; ii < nodes; ii++) {
     int node_energy = 0;
     for (int jj = 0; jj < nodes; jj++) {
-      node_energy += abs(couplings[ii][jj]);
+      node_energy += 2*abs(couplings[ii][jj]);
     }
-    max_energy_change = max(2*node_energy, max_energy_change);
+    max_energy_change = max(node_energy, max_energy_change);
     energy_scale = gcd(node_energy, energy_scale);
   }
   max_energy -= (max_energy/2 % energy_scale);
