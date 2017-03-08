@@ -364,9 +364,9 @@ void network_simulation::compute_weights_from_dos(const double beta_cap) {
       }
     }
     // below all observed energies, use fixed temperature weights
-    for (int ee = lowest_seen_energy - 1; ee >= 0; ee--) {
+    for (int ee = 0; ee < lowest_seen_energy; ee++) {
       ln_weights[ee] = (-ln_dos[lowest_seen_energy]
-                        - abs(lowest_seen_energy - ee) * beta_cap);
+                        + (lowest_seen_energy - ee) * beta_cap);
     }
 
   } else { // if beta_cap < 0
@@ -396,7 +396,7 @@ void network_simulation::compute_weights_from_dos(const double beta_cap) {
     // above all observed energies, use fixed temperature weights
     for (int ee = highest_seen_energy + 1; ee < energy_range; ee++) {
       ln_weights[ee] = (-ln_dos[highest_seen_energy]
-                        - abs(highest_seen_energy - ee) * beta_cap);
+                        + (highest_seen_energy - ee) * beta_cap);
     }
   }
 
@@ -523,9 +523,16 @@ void network_simulation::write_distance_file(const fs::path distance_file,
 
 void network_simulation::read_weights_file(const fs::path weights_file,
                                            const double beta_cap) {
-  // keep track of first and last zeroes in ln_weights to identify the entropy peak
-  bool first_zero_unset = true;
+  ln_weights = vector<double>(energy_range, 0);
+
+  // keep track of first and last zeroes in ln_weights
+  bool first_zero_set = false;
   int first_zero, last_zero;
+
+  // keep track of lowest and highest energies seen
+  bool lowest_seen_energy_set = false;
+  int lowest_seen_energy, highest_seen_energy;
+
 
   cout << "reading in weight array from file" << endl;
   ifstream input(weights_file.c_str());
@@ -537,24 +544,47 @@ void network_simulation::read_weights_file(const fs::path weights_file,
     line_stream >> word;
     const int ee = (stoi(word) + network.max_energy) / network.energy_scale;
     energy_histogram[ee]++; // mark this energy as seen
+
+    if (!lowest_seen_energy_set) {
+      lowest_seen_energy_set = true;
+      lowest_seen_energy = ee;
+    }
+    highest_seen_energy = ee;
+
     line_stream >> word;
     const double weight = stod(word);
+    ln_weights[ee] = weight;
+
     if (weight == 0) {
-      if (first_zero_unset) {
-        first_zero_unset = false;
+      if (!first_zero_set) {
+        first_zero_set = true;
         first_zero = ee;
       }
       last_zero = ee;
     }
-    ln_weights[ee] = weight;
   }
 
-  // set entropy peak
+  // fill in the weight array within the range of seen energies
+  for (int ee = lowest_seen_energy + 1; ee < highest_seen_energy; ee++) {
+    if (ln_weights[ee] == 0) ln_weights[ee] = ln_weights[ee-1];
+  }
+
+  // set entropy peak and fill in the rest of the weight array
   if (beta_cap > 0) {
     entropy_peak = first_zero;
-  } else {
+    for (int ee = 0; ee < lowest_seen_energy; ee++) {
+      ln_weights[ee] = (ln_weights[lowest_seen_energy]
+                        + (lowest_seen_energy - ee) * beta_cap);
+    }
+
+  } else { // if beta_cap < 0
     entropy_peak = last_zero;
+    for (int ee = highest_seen_energy + 1; ee < energy_range; ee++) {
+      ln_weights[ee] = (ln_weights[highest_seen_energy]
+                        + (highest_seen_energy - ee) * beta_cap);
+    }
   }
+
 }
 
 // ---------------------------------------------------------------------------------------
