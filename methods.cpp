@@ -56,21 +56,6 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
     }
   }
 
-  // determine maximum energy achievable by network
-  // as a heuristic, use 2*max_p(|E_p|), where E_p is the energy of pattern p
-  // todo: use a better estimate of the minimum/maximum energy
-  max_energy = 0;
-  for (int pp = 0, size = patterns.size(); pp < size; pp++) {
-    int pattern_energy = 0;
-    for (int ii = 0; ii < nodes; ii++) {
-      for (int jj = ii + 1; jj < nodes; jj++) {
-        pattern_energy
-          -= couplings[ii][jj] * (2*patterns[pp][ii]-1) * (2*patterns[pp][jj]-1);
-      }
-    }
-    max_energy = max(-2*pattern_energy, max_energy);
-  }
-
   // determine the maximum energy change possible in one move, as well as
   //   the energy resolution (energy_scale) needed to keep track of all energies
   max_energy_change = 0;
@@ -83,7 +68,20 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
     max_energy_change = max(node_energy, max_energy_change);
     energy_scale = gcd(node_energy, energy_scale);
   }
-  max_energy -= (max_energy/2 % energy_scale);
+
+  // compute an upper bound on the maximum energy achievable by network
+  // given that the actual energy is
+  //   1/2 \sum_{i,j} J_{ij} s_i s_j with s_i, s_j in {-1, 1}
+  //   an upper bound is 1/2 \sum_{i,j} |J_{ij}| = \sum_{i,j>i} |J_{ij}|
+  max_energy = 0;
+  for (int ii = 0; ii < nodes; ii++) {
+    for (int jj = ii + 1; jj < nodes; jj++) {
+      max_energy += abs(couplings[ii][jj]);
+    }
+  }
+  // fix up max_energy so that for any energy E we observe,
+  //   (E + max_energy) is divisible by energy_scale
+  max_energy -= (max_energy + energy(patterns[0])) % energy_scale;
 
 };
 
