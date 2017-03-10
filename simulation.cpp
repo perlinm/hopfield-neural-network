@@ -239,7 +239,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   const string node_tag = "-N" + to_string(ns.network.nodes);
   const string pattern_tag = "-P" + to_string(ns.pattern_number);
   const string file_suffix = (node_tag + pattern_tag + beta_tag
-                              + to_string(hash) + ".txt");
+                              + "-h" + to_string(hash) + ".txt");
 
   // paths to data files
   const fs::path transitions_file
