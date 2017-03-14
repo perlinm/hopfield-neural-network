@@ -25,6 +25,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   bool debug;
   unsigned long long int seed;
   unsigned long long int pattern_seed;
+  bool print_suffix;
 
   po::options_description general("General options", help_text_length);
   general.add_options()
@@ -35,6 +36,8 @@ int main(const int arg_num, const char *arg_vec[]) {
      "seed for random number generator")
     ("pattern_seed", po::value<unsigned long long int>(&pattern_seed)->default_value(0),
      "random number generator seed when generating patterns")
+    ("suffix", po::value<bool>(&print_suffix)->default_value(false)->implicit_value(true),
+     "print the file suffix associated with this simulation instead of running it")
     ;
 
   int nodes;
@@ -269,6 +272,12 @@ int main(const int arg_num, const char *arg_vec[]) {
     cout << endl;
     ns.network.print_couplings();
     cout << endl;
+  }
+
+  if (print_suffix) {
+    cout << "output file suffix:" << endl
+         << file_suffix << endl;
+    return 0;
   }
 
   // -------------------------------------------------------------------------------------
