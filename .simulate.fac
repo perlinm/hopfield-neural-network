@@ -4,7 +4,7 @@
 C ~/.ccache/
 > methods.o
 
-| g++ -std=c++11 -Wall -Werror -flto -O3 -lboost_system -lboost_filesystem -lboost_system -lboost_program_options -lboost_system -c -o simulation.o simulation.cpp
+| g++ -std=c++11 -Wall -Werror -flto -O3 -lboost_system -lboost_filesystem -lboost_program_options -c -o simulation.o simulation.cpp
 < methods.h
 < simulation.cpp
 C ~/.ccache/

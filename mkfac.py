@@ -73,7 +73,7 @@ for sim_file in sim_files:
         for line in f:
             if "#include" in line or "#define" in line:
                 for tag in lib_flags.keys():
-                    if tag in line and lib_flags[tag] not in libraries:
+                    if tag in line and lib_flags[tag][0] not in libraries:
                         libraries += [lib_flags[tag][0]]
                         if len(lib_flags[tag]) > 1:
                             include_files += [lib_flags[tag][1]]
