@@ -212,10 +212,12 @@ int main(const int arg_num, const char *arg_vec[]) {
     = ns.network.nodes * ns.pattern_number * pow(10, init_factor);
 
   // print some info about the simulation
-  cout << "maximum energy: " << ns.network.max_energy << endl
-       << "maximum energy change: " << ns.network.max_energy_change << endl
-       << "energy scale: " << ns.network.energy_scale << endl
+  cout << "nodes: " << ns.network.nodes << endl
+       << "pattern number: " << ns.pattern_number << endl
        << "inverse temperature: " << input_beta_cap << endl
+       << "energy scale: " << ns.network.energy_scale << endl
+       << "maximum energy: " << ns.network.max_energy << endl
+       << "maximum energy change: " << ns.network.max_energy_change << endl
        << endl;
 
   // make a hash of the patterns and target sample error to identify this simulation
