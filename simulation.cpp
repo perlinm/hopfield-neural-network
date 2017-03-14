@@ -62,7 +62,8 @@ int main(const int arg_num, const char *arg_vec[]) {
     ("fixed_T", po::value<bool>(&fixed_temp)->default_value(false)->implicit_value(true),
      "run a fixed-temperature simulation")
     ("beta_cap", po::value<double>(&input_beta_cap)->default_value(1),
-     "maximum inverse temperature scale of interest in the simulation")
+     "maximum (if positive) or minimum (if negative) inverse temperature"
+     " of interest in the simulation")
     ("init_factor", po::value<int>(&init_factor)->default_value(5),
      "run for nodes * pattern_number * 10^(init_factor) iterations"
      " per initialization cycle")
