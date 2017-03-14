@@ -1,5 +1,6 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import sys, os, glob, re, subprocess
+from collections import OrderedDict
 
 testing_mode = False
 hide_warnings = False
@@ -36,12 +37,13 @@ mkl_flags = ("-Wl,--no-as-needed,-rpath=$(cat {0})/lib/intel64/" + \
              " -lmkl_gnu_thread -lpthread -lm -ldl -fopenmp -m64" + \
              " -I $(cat {0})/include/").format(mkl_root)
 
-lib_flags = {"eigen3" : ["$(cat {})".format(eigen_dirs), eigen_dirs],
-             "USE_MKL" : ["{}".format(mkl_flags), mkl_root],
-             "boost" : ["-lboost_system"],
-             "boost/filesystem" : ["-lboost_filesystem"],
-             "boost/program_options" : ["-lboost_program_options"],
-             "gsl" : "-lgsl"}
+lib_flags = OrderedDict()
+lib_flags["eigen3"] = ["$(cat {})".format(eigen_dirs), eigen_dirs]
+lib_flags["USE_MKL"] = ["{}".format(mkl_flags), mkl_root]
+lib_flags["boost"] = ["-lboost_system"]
+lib_flags["boost/filesystem"] = ["-lboost_filesystem"]
+lib_flags["boost/program_options"] = ["-lboost_program_options"]
+lib_flags["gsl"] = ["-lgsl"]
 
 fac_text = ""
 used_libraries = []
@@ -52,10 +54,10 @@ def fac_rule(libraries, headers, out_file, in_files, link=False):
     rule_text = "| g++ {} {} ".format(common_flags, (debug_flag if testing_mode
                                                      else optimization_flag))
     if hide_warnings: rule_text += ignored_warning_flags + " "
-    rule_text += " ".join(libraries) + " "
     if not link: rule_text += "-c "
     rule_text += "-o {} ".format(out_file)
-    rule_text += " ".join(in_files)+"\n"
+    rule_text += " ".join(in_files) + " "
+    rule_text += " ".join(libraries) + "\n"
 
     for dependency in headers + in_files:
         rule_text += "< {}\n".format(dependency)
