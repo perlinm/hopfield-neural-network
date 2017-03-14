@@ -46,57 +46,57 @@ lib_flags["boost/program_options"] = ["-lboost_program_options"]
 lib_flags["gsl"] = ["-lgsl"]
 
 fac_text = ""
-used_libraries = []
-used_headers = []
-sim_files = sorted(glob.glob("*.cpp"))
+global_libraries = []
+global_dependencies = []
+cpp_files = sorted(glob.glob("*.cpp"))
 
-def fac_rule(libraries, headers, out_file, in_files, link=False):
-    rule_parts = ["| g++"]
-    rule_parts += common_flags
-    rule_parts += [ debug_flag if testing_mode else optimization_flag ]
-    if hide_warnings: rule_parts += ignored_warning_flags
-    if not link: rule_parts += ["-c"]
-    rule_parts += ["-o {}".format(out_file)]
-    rule_parts += [" ".join(in_files)]
-    rule_parts += [" ".join(libraries)]
-    rule_text = " ".join(rule_parts) + "\n"
+def fac_rule(libraries, file_dependencies, input_files, output_file, link = False):
+    cmd_parts = ["| g++"]
+    cmd_parts += common_flags
+    cmd_parts += [ debug_flag if testing_mode else optimization_flag ]
+    if hide_warnings: cmd_parts += ignored_warning_flags
+    if not link: cmd_parts += ["-c"]
+    cmd_parts += ["-o {}".format(output_file)]
+    cmd_parts += [" ".join(input_files)]
+    cmd_parts += [" ".join(libraries)]
+    rule_text = " ".join(cmd_parts) + "\n"
 
-    for dependency in headers + in_files:
+    for dependency in file_dependencies + input_files:
         rule_text += "< {}\n".format(dependency)
     for ignore_dir in ignore_dirs:
         rule_text += "C {}\n".format(ignore_dir)
-    rule_text += "> {}\n\n".format(out_file)
+    rule_text += "> {}\n\n".format(output_file)
     return rule_text
 
-for sim_file in sim_files:
-    out_file = sim_file.replace(".cpp",".o")
+for cpp_file in cpp_files:
+    output_file = cpp_file.replace(".cpp",".o")
     libraries = []
-    include_files = [sim_file]
-    headers = []
-    with open(sim_file,'r') as f:
+    dependencies = []
+    with open(cpp_file,'r') as f:
         for line in f:
             if "#include" in line or "#define" in line:
                 for tag in lib_flags.keys():
                     if tag in line and lib_flags[tag][0] not in libraries:
                         libraries += [lib_flags[tag][0]]
                         if len(lib_flags[tag]) > 1:
-                            include_files += [lib_flags[tag][1]]
+                             dependencies += [lib_flags[tag][1]]
                 if re.search('"*\.h"',line):
-                    headers += [line.split('"')[-2]]
+                    dependencies += [line.split('"')[-2]]
 
-    fac_text += fac_rule(libraries, headers, out_file, include_files)
+    fac_text += fac_rule(libraries, dependencies, [cpp_file], output_file)
     for library in libraries:
-        if library not in used_libraries:
-            used_libraries += [library]
-    for header in headers:
-        if header not in used_headers:
-            used_headers += [header]
+        if library not in global_libraries:
+            global_libraries += [library]
+    for dependency in dependencies:
+        if dependency not in global_dependencies:
+            global_dependencies += [dependency]
 
 
-out_files = [ sim_file.replace(".cpp",".o") for sim_file in sim_files ]
-fac_text += fac_rule(used_libraries, used_headers, executable, out_files, link=True)
+compiled_binaries = [ cpp_file.replace(".cpp",".o") for cpp_file in cpp_files ]
+fac_text += fac_rule(global_libraries, global_dependencies,
+                     compiled_binaries, executable, link = True)
+
 fac_text += "| etags *.cpp *.h\n< {}\n> TAGS\n".format(executable)
-
 
 with open(".{}".format(executable.replace(".exe",".fac")),"w") as f:
     f.write(fac_text)
