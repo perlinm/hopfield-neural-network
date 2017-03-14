@@ -3,13 +3,11 @@
 #include <random> // for randomness
 #include <sstream> // for string streams
 #include <algorithm> // for sort method
-
-#include <boost/filesystem.hpp> // filesystem path manipulation library
+#include <fstream> // for stream objects
 
 #include "methods.h"
 
 using namespace std;
-namespace fs = boost::filesystem;
 
 // greatest common divisor
 int gcd(const int a, const int b) {
@@ -453,10 +451,10 @@ double network_simulation::fractional_sample_error(const double beta_cap) const 
 // Writing/reading data files
 // ---------------------------------------------------------------------------------------
 
-void network_simulation::write_transitions_file(const fs::path transitions_file,
+void network_simulation::write_transitions_file(const string transitions_file,
                                                 const string file_header) const {
   cout << "writing transition matrix to a file" << endl;
-  fs::ofstream transition_stream(transitions_file);
+  ofstream transition_stream(transitions_file);
   transition_stream << file_header
                     << "# (row)x(column) = (energy)x(de)" << endl;
   for (int ee = 0; ee < energy_range; ee++) {
@@ -471,10 +469,10 @@ void network_simulation::write_transitions_file(const fs::path transitions_file,
   transition_stream.close();
 }
 
-void network_simulation::write_weights_file(const fs::path weights_file,
+void network_simulation::write_weights_file(const string weights_file,
                                             const string file_header) const {
   cout << "writing weight array to a file" << endl;
-  fs::ofstream weight_stream(weights_file);
+  ofstream weight_stream(weights_file);
   weight_stream << file_header
                 << "# energy, ln_weight" << endl;
   for (int ee = 0; ee < energy_range; ee++) {
@@ -486,10 +484,10 @@ void network_simulation::write_weights_file(const fs::path weights_file,
   weight_stream.close();
 }
 
-void network_simulation::write_energy_file(const fs::path energy_file,
+void network_simulation::write_energy_file(const string energy_file,
                                            const string file_header) const {
   cout << "writing energy histogram to a file" << endl;
-  fs::ofstream energy_stream(energy_file);
+  ofstream energy_stream(energy_file);
   energy_stream << file_header
                 << "# energy, energy histogram, sample histogram" << endl;
   for (int ee = 0; ee < energy_range; ee++) {
@@ -501,10 +499,10 @@ void network_simulation::write_energy_file(const fs::path energy_file,
   energy_stream.close();
 }
 
-void network_simulation::write_distance_file(const fs::path distance_file,
-                                              const string file_header) const {
+void network_simulation::write_distance_file(const string distance_file,
+                                             const string file_header) const {
   cout << "writing distance log to a file" << endl;
-  fs::ofstream distance_stream(distance_file);
+  ofstream distance_stream(distance_file);
   distance_stream << file_header
                   << "# energy, distance records, distance log..." << endl;
   for (int ee = 0; ee < energy_range; ee++) {
@@ -519,7 +517,7 @@ void network_simulation::write_distance_file(const fs::path distance_file,
   distance_stream.close();
 }
 
-void network_simulation::read_weights_file(const fs::path weights_file,
+void network_simulation::read_weights_file(const string weights_file,
                                            const double beta_cap) {
   ln_weights = vector<double>(energy_range, 0);
 

@@ -212,8 +212,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     = ns.network.nodes * ns.pattern_number * pow(10, init_factor);
 
   // print some info about the simulation
-  cout << endl
-       << "maximum energy: " << ns.network.max_energy << endl
+  cout << "maximum energy: " << ns.network.max_energy << endl
        << "maximum energy change: " << ns.network.max_energy_change << endl
        << "energy scale: " << ns.network.energy_scale << endl
        << "inverse temperature: " << input_beta_cap << endl
@@ -242,14 +241,14 @@ int main(const int arg_num, const char *arg_vec[]) {
                               + "-h" + to_string(hash) + ".txt");
 
   // paths to data files
-  const fs::path transitions_file
-    = fs::path(data_dir) / fs::path("transitions" + file_suffix);
-  const fs::path weights_file
-    = fs::path(data_dir) / fs::path("weights" + file_suffix);
-  const fs::path energy_file
-    = fs::path(data_dir) / fs::path("energies" + file_suffix);
-  const fs::path distance_file
-    = fs::path(data_dir) / fs::path("distances" + file_suffix);
+  const string transitions_file
+    = (fs::path(data_dir) / fs::path("transitions" + file_suffix)).string();
+  const string weights_file
+    = (fs::path(data_dir) / fs::path("weights" + file_suffix)).string();
+  const string energy_file
+    = (fs::path(data_dir) / fs::path("energies" + file_suffix)).string();
+  const string distance_file
+    = (fs::path(data_dir) / fs::path("distances" + file_suffix)).string();
 
   // header for all data files
   stringstream file_header_stream;

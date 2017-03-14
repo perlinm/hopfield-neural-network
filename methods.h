@@ -2,10 +2,7 @@
 
 #include <random> // for randomness
 
-#include <boost/filesystem.hpp> // filesystem path manipulation library
-
 using namespace std;
-namespace fs = boost::filesystem;
 
 // greatest common divisor
 int gcd(const int a, const int b);
@@ -155,13 +152,13 @@ struct network_simulation {
   // Writing/reading data files
   // -------------------------------------------------------------------------------------
 
-  void write_transitions_file(const fs::path transitions_file,
+  void write_transitions_file(const string transitions_file,
                               const string file_header) const;
-  void write_weights_file(const fs::path weights_file, const string file_header) const;
-  void write_energy_file(const fs::path energy_file, const string file_header) const;
-  void write_distance_file(const fs::path distance_file, const string file_header) const;
+  void write_weights_file(const string weights_file, const string file_header) const;
+  void write_energy_file(const string energy_file, const string file_header) const;
+  void write_distance_file(const string distance_file, const string file_header) const;
 
-  void read_weights_file(const fs::path weights_file, const double beta_cap);
+  void read_weights_file(const string weights_file, const double beta_cap);
 
   // -------------------------------------------------------------------------------------
   // Printing methods
