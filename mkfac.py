@@ -22,15 +22,15 @@ ignore_dirs = [ "~/.ccache/" ]
 language_standard_flag = "-std=c++11"
 warning_flags = "-Wall -Werror"
 link_time_optimization_flag = "-flto"
-common_flags = " ".join([ language_standard_flag,
-                          warning_flags,
-                          link_time_optimization_flag ])
+common_flags = [ language_standard_flag,
+                 warning_flags,
+                 link_time_optimization_flag ]
 
 debug_flag = "-g"
 optimization_flag = "-O3"
-ignored_warning_flags = " ".join(["-Wno-unused-variable",
-                                  "-Wno-unused-but-set-variable",
-                                  "-Wno-unused-local-typedefs"])
+ignored_warning_flags = [ "-Wno-unused-variable",
+                          "-Wno-unused-but-set-variable",
+                          "-Wno-unused-local-typedefs" ]
 
 mkl_flags = ("-Wl,--no-as-needed,-rpath=$(cat {0})/lib/intel64/" + \
              " -L $(cat {0})/lib/intel64/ -lmkl_intel_lp64 -lmkl_core" + \
@@ -51,13 +51,15 @@ used_headers = []
 sim_files = sorted(glob.glob("*.cpp"))
 
 def fac_rule(libraries, headers, out_file, in_files, link=False):
-    rule_text = "| g++ {} {} ".format(common_flags, (debug_flag if testing_mode
-                                                     else optimization_flag))
-    if hide_warnings: rule_text += ignored_warning_flags + " "
-    if not link: rule_text += "-c "
-    rule_text += "-o {} ".format(out_file)
-    rule_text += " ".join(in_files) + " "
-    rule_text += " ".join(libraries) + "\n"
+    rule_parts = ["| g++"]
+    rule_parts += common_flags
+    rule_parts += [ debug_flag if testing_mode else optimization_flag ]
+    if hide_warnings: rule_parts += ignored_warning_flags
+    if not link: rule_parts += ["-c"]
+    rule_parts += ["-o {}".format(out_file)]
+    rule_parts += [" ".join(in_files)]
+    rule_parts += [" ".join(libraries)]
+    rule_text = " ".join(rule_parts) + "\n"
 
     for dependency in headers + in_files:
         rule_text += "< {}\n".format(dependency)
