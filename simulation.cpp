@@ -318,8 +318,13 @@ int main(const int arg_num, const char *arg_vec[]) {
     //   run the standard initialization routine
     if (!fs::exists(weights_file)) {
 
-      cout << "starting all-temperature initialization routine..." << endl
-           << "sample_error cycle_number" << endl;
+      cout << "starting all-temperature initialization routine..." << endl;
+
+      if (fs::exists(transitions_file)) {
+        ns.read_transitions_file(transitions_file);
+      }
+
+      cout << "sample_error cycle_number" << endl;
 
       // number of initialization cycles we have finished
       int cycles = 0;
@@ -429,9 +434,9 @@ int main(const int arg_num, const char *arg_vec[]) {
 
       ns.read_weights_file(weights_file, beta_cap);
 
-    }
+    } // complete determination of weights for an all temperature simulation
 
-  } // complete construction of weights
+  } // complete initialization
 
   if (debug) {
     ns.print_energy_data();

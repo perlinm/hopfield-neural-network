@@ -517,10 +517,26 @@ void network_simulation::write_distance_file(const string distance_file,
   distance_stream.close();
 }
 
+void network_simulation::read_transitions_file(const string transitions_file) {
+  cout << "reading in transition matrix" << endl;
+  ifstream input(transitions_file);
+  string line;
+  string word;
+  while (getline(input,line)) {
+    if (line[0] == '#' || line.empty()) continue;
+    stringstream line_stream(line);
+    line_stream >> word;
+    const int ee = (stoi(word) + network.max_energy) / network.energy_scale;
+    energy_histogram[ee]++; // mark this energy as seen
+    for (int dd = 0; dd < 2*max_de + 1 ; dd++) {
+      line_stream >> word;
+      transition_histogram[ee][dd] = stoi(word);
+    }
+  }
+}
+
 void network_simulation::read_weights_file(const string weights_file,
                                            const double beta_cap) {
-  ln_weights = vector<double>(energy_range, 0);
-
   // keep track of first and last zeroes in ln_weights
   bool first_zero_set = false;
   int first_zero, last_zero;
@@ -530,7 +546,7 @@ void network_simulation::read_weights_file(const string weights_file,
   int lowest_seen_energy, highest_seen_energy;
 
 
-  cout << "reading in weight array from file" << endl;
+  cout << "reading in weight array" << endl;
   ifstream input(weights_file.c_str());
   string line;
   string word;
