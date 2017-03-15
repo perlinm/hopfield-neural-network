@@ -15,14 +15,16 @@ if len(sys.argv) < 2:
 whide = whide_flag in sys.argv
 if whide: sys.argv.remove(whide_flag)
 
-walltime_in_hours = sys.argv[1]
+time = sys.argv[1] + ":00:00"
 sim_args = sys.argv[2:]
+
+project_dir = os.path.dirname(os.path.abspath(__file__))
 
 on_rc_server = ("colorado.edu" in socket.getfqdn())
 rc_modules = " ".join([ "gcc/6.1.0", "openmpi/1.10.2", "boost/1.61.0", "python/3.5.1" ])
 def rc_exec_list(cmd):
     return [ "ssh", "scompile",
-             "module load {}; cd {}; {}".format(rc_modules, os.getcwd(), cmd) ]
+             "module load {}; cd {}; {}".format(rc_modules, project_dir, cmd) ]
 
 # get output of a command
 def get_output(cmd_list):
@@ -39,7 +41,7 @@ else:
     subprocess.call([mkfac])
 
 # determine simulation file basename
-suffix_cmd = [ "./{}".format(simulate), "--suffix" ]
+suffix_cmd = [ "{}/{}".format(project_dir, simulate), "--suffix" ]
 if sim_args != []:
     suffix_cmd += sim_args
 if on_rc_server:
@@ -52,7 +54,7 @@ job_file = "{}/{}.sh".format(job_dir,basename)
 # set batch options
 options = [ [ "output", basename + ".out" ],
             [ "error", basename + ".err" ],
-            [ "time", walltime_in_hours + ":00:00" ],
+            [ "time", time ],
             [ "nodes", 1 ],
             [ "ntasks", 1 ],
             [ "ntasks-per-node", 1 ],
@@ -63,7 +65,7 @@ job_text = "#!/usr/bin/env sh\n"
 for option in options:
     job_text += "#SBATCH --{} {}\n".format(option[0],option[1])
 job_text += "\n"
-job_text += "./{} ".format(simulate) + " ".join(sim_args) + "\n"
+job_text += "{}/{} ".format(project_dir, simulate) + " ".join(sim_args) + "\n"
 
 if not os.path.isdir(job_dir):
     os.makedirs(job_dir)
