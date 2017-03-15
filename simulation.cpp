@@ -287,6 +287,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Initialize the weight array
   // -------------------------------------------------------------------------------------
 
+  clock_t last_checkup = time(NULL); // keep time to periodically write data files
+
   // initialize weight array
   if (fixed_temp) {
 
@@ -420,6 +422,12 @@ int main(const int arg_num, const char *arg_vec[]) {
         cout << fixed << setprecision(ceil(-log10(target_sample_error)) + 3)
              << sample_error << " " << cycles << endl;
 
+        // if enough time has passed, write the transitions file
+        if ( difftime(time(NULL), last_checkup) > print_time * 60 ) {
+          ns.write_transitions_file(transitions_file, file_header);
+          last_checkup = time(NULL);
+        }
+
         // loop until we satisfy the end condition for initialization
       } while (sample_error > target_sample_error);
 
@@ -453,7 +461,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   // -------------------------------------------------------------------------------------
 
   cout << "starting simulation" << endl << endl;
-  clock_t last_checkup = time(NULL); // keep time to periodically write data files
+  last_checkup = time(NULL);
 
   int new_energy; // energy of the state we move into
   int old_energy = ns.energy(); // energy of the last state
