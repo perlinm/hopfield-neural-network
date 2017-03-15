@@ -535,8 +535,7 @@ void network_simulation::read_transitions_file(const string transitions_file) {
   }
 }
 
-void network_simulation::read_weights_file(const string weights_file,
-                                           const double beta_cap) {
+void network_simulation::read_weights_file(const string weights_file) {
   // keep track of first and last zeroes in ln_weights
   bool first_zero_set = false;
   int first_zero, last_zero;
@@ -545,15 +544,26 @@ void network_simulation::read_weights_file(const string weights_file,
   bool lowest_seen_energy_set = false;
   int lowest_seen_energy, highest_seen_energy;
 
+  // maximum temperature of interest specified in weights file
+  double beta_cap;
 
   cout << "reading in weight array" << endl;
   ifstream input(weights_file.c_str());
   string line;
   string word;
   while (getline(input,line)) {
-    if (line[0] == '#' || line.empty()) continue;
+    if (line.empty()) continue;
     stringstream line_stream(line);
     line_stream >> word;
+
+    if (word == "#") {
+      if (word.find("beta") != string::npos) {
+        line_stream >> word;
+        beta_cap = stod(word) * network.energy_scale / network.nodes;
+      }
+      continue;
+    }
+
     const int ee = (stoi(word) + network.max_energy) / network.energy_scale;
     energy_histogram[ee]++; // mark this energy as seen
 

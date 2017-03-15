@@ -159,7 +159,7 @@ struct network_simulation {
   void write_distance_file(const string distance_file, const string file_header) const;
 
   void read_transitions_file(const string transitions_file);
-  void read_weights_file(const string weights_file, const double beta_cap);
+  void read_weights_file(const string weights_file);
 
   // -------------------------------------------------------------------------------------
   // Printing methods

@@ -212,7 +212,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   network_simulation ns(patterns, random_state(nodes, rnd, generator));
 
   // inverse temperature in units compatible with that for our energies
-  const double beta_cap = input_beta_cap * ns.network.energy_scale / nodes;
+  const double beta_cap = input_beta_cap * ns.network.energy_scale / ns.network.nodes;
 
   // number of iterations per initialization cycle
   const int iterations_per_cycle
@@ -440,7 +440,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
     } else { // the weights file already exists, so read it in
 
-      ns.read_weights_file(weights_file, beta_cap);
+      ns.read_weights_file(weights_file);
 
     } // complete determination of weights for an all temperature simulation
 
