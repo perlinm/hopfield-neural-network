@@ -59,6 +59,8 @@ def fac_rule(libraries, file_dependencies, input_files, output_file, link = Fals
     cmd_parts += ["-o {}".format(output_file)]
     cmd_parts += [" ".join(input_files)]
     cmd_parts += [" ".join(libraries)]
+    cmd_parts = list(filter(None,cmd_parts))
+
     rule_text = " ".join(cmd_parts) + "\n"
 
     for dependency in file_dependencies + input_files:
