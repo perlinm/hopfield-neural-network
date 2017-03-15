@@ -2,7 +2,6 @@
 import sys, os, subprocess, socket
 
 whide_flag = "whide"
-fac = "~/src/fac/fac"
 mkfac = "./mkfac.py"
 job_dir = "jobs"
 simulate = "simulate.exe"
@@ -19,13 +18,34 @@ if whide: sys.argv.remove(whide_flag)
 walltime_in_hours = sys.argv[1]
 sim_args = sys.argv[2:]
 
+on_rc_server = ("colorado.edu" in socket.getfqdn())
+rc_modules = " ".join([ "gcc/6.1.0", "openmpi/1.10.2", "boost/1.61.0", "python/3.5.1" ])
+def rc_exec_list(cmd):
+    return [ "ssh", "scompile",
+             "module load {}; cd {}; {}".format(rc_modules, os.getcwd(), cmd) ]
+
+# get output of a command
+def get_output(cmd_list):
+    result = subprocess.run(cmd_list, stdout = subprocess.PIPE)
+    return result.stdout.decode("utf-8")
+
 # before proceeding further, build the project
-print("building project locally...")
-subprocess.call([mkfac] + ([ whide_flag ] if whide else []))
+print("building project...")
+if on_rc_server:
+    subprocess.call([ mkfac, "no-build" ])
+    fac = get_output([ "which", "fac" ])
+    subprocess.call(rc_exec_list(fac))
+else:
+    subprocess.call([mkfac])
 
 # determine simulation file basename
-suffix_cmd = "./simulate.exe --suffix "+" ".join(sim_args)
-suffix = (subprocess.check_output(suffix_cmd, shell = True)).split()[-1].decode("utf-8")
+suffix_cmd = [ "./{}".format(simulate), "--suffix" ]
+if sim_args != []:
+    suffix_cmd += sim_args
+if on_rc_server:
+    suffix_cmd = rc_exec_list(" ".join(suffix_cmd))
+
+suffix = get_output(suffix_cmd).split()[-1]
 basename = "network" + ".".join(suffix.split(".")[:-1])
 job_file = "{}/{}.sh".format(job_dir,basename)
 
@@ -50,15 +70,5 @@ if not os.path.isdir(job_dir):
 with open(job_file, "w") as f:
     f.write(job_text)
 
-if "colorado.edu" in socket.getfqdn():
-    modules = " ".join([ "gcc/6.1.0", "openmpi/1.10.2", "boost/1.61.0", "python/3.5.1" ])
-    build_list = [ "ssh", "scompile",
-                   "module load {}; cd {}; {}".format(modules, os.getcwd(), fac) ]
-    print("recompiling on a compile node...")
-    subprocess.call(build_list)
-    compile_cmd = "sbatch"
-
-else:
-    compile_cmd = "sh"
-
-subprocess.call([ compile_cmd, job_file ])
+submit_cmd = ("sbatch" if on_rc_server else "sh")
+subprocess.call([ submit_cmd, job_file ])
