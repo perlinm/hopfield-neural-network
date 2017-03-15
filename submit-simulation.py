@@ -34,7 +34,8 @@ options = [ [ "output", basename + ".out" ],
             [ "time", walltime_in_hours + ":00:00" ],
             [ "nodes", 1 ],
             [ "ntasks", 1 ],
-            [ "ntasks-per-node", 1 ] ]
+            [ "ntasks-per-node", 1 ],
+            [ "account", "clphys72300117" ] ]
 
 # construct and write job file
 job_text = "#!/usr/bin/env sh\n"
