@@ -4,13 +4,16 @@ from collections import OrderedDict
 
 testing_mode = False
 hide_warnings = False
+build = True
 for arg in sys.argv[1:]:
     if arg.lower() == "test":
         testing_mode = True
     elif arg.lower() == "whide":
         hide_warnings = True
+    elif arg.lower() == "no-build":
+        build = False
     else:
-        print('useage: {} [test] [whide]'.format(sys.argv[0]))
+        print("useage: {} [test] [whide] [no-build]".format(sys.argv[0]))
         exit(1)
 
 executable = "simulate.exe"
@@ -103,4 +106,4 @@ fac_text += "| etags *.cpp *.h\n< {}\n> TAGS\n".format(executable)
 with open(".{}".format(executable.replace(".exe",".fac")),"w") as f:
     f.write(fac_text)
 
-exit(subprocess.call(["fac"]))
+if build: exit(subprocess.call(["fac"]))
