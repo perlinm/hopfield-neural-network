@@ -2,7 +2,8 @@
 import sys, os, subprocess, socket
 
 whide_flag = "whide"
-mkfac = "mkfac.py"
+fac = "~/src/fac/fac"
+mkfac = "./mkfac.py"
 job_dir = "jobs"
 simulate = "simulate.exe"
 
@@ -19,8 +20,8 @@ walltime_in_hours = sys.argv[1]
 sim_args = sys.argv[2:]
 
 # before proceeding further, build the project
-print("building project")
-subprocess.call(["./"+mkfac] + ([ whide_flag ] if whide else []))
+print("building project locally...")
+subprocess.call([mkfac] + ([ whide_flag ] if whide else []))
 
 # determine simulation file basename
 suffix_cmd = "./simulate.exe --suffix "+" ".join(sim_args)
@@ -50,8 +51,14 @@ with open(job_file, "w") as f:
     f.write(job_text)
 
 if "colorado.edu" in socket.getfqdn():
-    submit_cmd = "sbatch"
-else:
-    submit_cmd = "sh"
+    modules = " ".join([ "gcc/6.1.0", "openmpi/1.10.2", "boost/1.61.0", "python/3.5.1" ])
+    build_list = [ "ssh", "scompile",
+                   "module load {}; cd {}; {}".format(modules, os.getcwd(), fac) ]
+    print("recompiling on a compile node...")
+    subprocess.call(build_list)
+    compile_cmd = "sbatch"
 
-subprocess.call([submit_cmd,job_file])
+else:
+    compile_cmd = "sh"
+
+subprocess.call([ compile_cmd, job_file ])
