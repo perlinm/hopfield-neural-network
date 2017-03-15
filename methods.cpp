@@ -453,9 +453,9 @@ double network_simulation::fractional_sample_error(const double beta_cap) const 
 
 void network_simulation::write_transitions_file(const string transitions_file,
                                                 const string file_header) const {
-  cout << "writing transition matrix to a file" << endl;
+  cout << "writing transition matrix" << endl;
   ofstream transition_stream(transitions_file);
-  transition_stream << file_header
+  transition_stream << file_header << endl
                     << "# (row)x(column) = (energy)x(de)" << endl;
   for (int ee = 0; ee < energy_range; ee++) {
     if (energy_histogram[ee] == 0) continue;
@@ -471,9 +471,9 @@ void network_simulation::write_transitions_file(const string transitions_file,
 
 void network_simulation::write_weights_file(const string weights_file,
                                             const string file_header) const {
-  cout << "writing weight array to a file" << endl;
+  cout << "writing weight array" << endl;
   ofstream weight_stream(weights_file);
-  weight_stream << file_header
+  weight_stream << file_header << endl
                 << "# energy, ln_weight" << endl;
   for (int ee = 0; ee < energy_range; ee++) {
     if (energy_histogram[ee] == 0) continue;
@@ -486,9 +486,9 @@ void network_simulation::write_weights_file(const string weights_file,
 
 void network_simulation::write_energy_file(const string energy_file,
                                            const string file_header) const {
-  cout << "writing energy histogram to a file" << endl;
+  cout << "writing energy histogram" << endl;
   ofstream energy_stream(energy_file);
-  energy_stream << file_header
+  energy_stream << file_header << endl
                 << "# energy, energy histogram, sample histogram" << endl;
   for (int ee = 0; ee < energy_range; ee++) {
     if (energy_histogram[ee] == 0)  continue;
@@ -501,9 +501,9 @@ void network_simulation::write_energy_file(const string energy_file,
 
 void network_simulation::write_distance_file(const string distance_file,
                                              const string file_header) const {
-  cout << "writing distance log to a file" << endl;
+  cout << "writing distance log" << endl;
   ofstream distance_stream(distance_file);
-  distance_stream << file_header
+  distance_stream << file_header << endl
                   << "# energy, distance records, distance log..." << endl;
   for (int ee = 0; ee < energy_range; ee++) {
     if (energy_histogram[ee] == 0)  continue;

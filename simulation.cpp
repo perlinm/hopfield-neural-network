@@ -2,6 +2,7 @@
 #include <iomanip> // for io manipulation (e.g. setw)
 #include <random> // for randomness
 #include <fstream> // for file input
+#include <ctime> // for keeping track of runtime
 
 #include <boost/filesystem.hpp> // filesystem path manipulation library
 #include <boost/program_options.hpp> // options parsing library
@@ -56,8 +57,9 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   bool fixed_temp;
   double input_beta_cap;
-  int init_factor;
   int log10_iterations;
+  int init_factor;
+  int print_time;
 
   po::options_description simulation_options("General simulation options",
                                              help_text_length);
@@ -67,11 +69,13 @@ int main(const int arg_num, const char *arg_vec[]) {
     ("beta_cap", po::value<double>(&input_beta_cap)->default_value(1),
      "maximum (if positive) or minimum (if negative) inverse temperature"
      " of interest in the simulation")
+    ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
+     "log10 of the number of iterations to simulate")
     ("init_factor", po::value<int>(&init_factor)->default_value(5),
      "run for nodes * pattern_number * 10^(init_factor) iterations"
      " per initialization cycle")
-    ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
-     "log10 of the number of iterations to simulate")
+    ("print_time", po::value<int>(&print_time)->default_value(30),
+     "number of minutes between intermediate data file dumps")
     ;
 
   double target_sample_error;
@@ -263,8 +267,7 @@ int main(const int arg_num, const char *arg_vec[]) {
                      << "# energy_range: " << ns.energy_range << endl
                      << "# max_de: " << ns.max_de << endl
                      << "# beta_cap: " << input_beta_cap << endl
-                     << "# target_sample_error: " << target_sample_error << endl
-                     << endl;
+                     << "# target_sample_error: " << target_sample_error << endl;
   const string file_header = file_header_stream.str();
 
   if (debug) {
@@ -445,6 +448,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   // -------------------------------------------------------------------------------------
 
   cout << "starting simulation" << endl << endl;
+  clock_t last_checkup = time(NULL); // keep time to periodically write data files
 
   int new_energy; // energy of the state we move into
   int old_energy = ns.energy(); // energy of the last state
@@ -483,11 +487,25 @@ int main(const int arg_num, const char *arg_vec[]) {
 
     // update the old energy
     old_energy = new_energy;
+
+    // if enough time has passed, write data files
+    if ( difftime(time(NULL), last_checkup) > print_time * 60 ) {
+      cout << "iterations: " << ii << endl;
+      const string header = file_header + "# iterations: " + to_string(ii) + "\n";
+      ns.write_energy_file(energy_file, header);
+      ns.write_distance_file(distance_file, header);
+      cout << endl;
+      last_checkup = time(NULL);
+    }
   }
 
-  // write data files
-  ns.write_energy_file(energy_file, file_header);
-  ns.write_distance_file(distance_file, file_header);
+  // write final data files
+  cout << "simulation complete" << endl;
+  const string header = (file_header + "# iterations: "
+                         + to_string((unsigned long long int)pow(10,log10_iterations))
+                         + "\n");
+  ns.write_energy_file(energy_file, header);
+  ns.write_distance_file(distance_file, header);
 
   if (debug) {
     cout << endl;
