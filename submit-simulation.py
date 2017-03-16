@@ -21,10 +21,10 @@ sim_args = sys.argv[2:]
 project_dir = os.path.dirname(os.path.abspath(__file__))
 
 on_rc_server = ("colorado.edu" in socket.getfqdn())
-rc_modules = " ".join([ "gcc/6.1.0", "openmpi/1.10.2", "boost/1.61.0", "python/3.5.1" ])
+rc_modules = [ "gcc/6.1.0", "openmpi/1.10.2", "boost/1.61.0", "python/3.5.1" ]
+rc_initialize = "module load " + " ".join(rc_modules)
 def rc_exec_list(cmd):
-    return [ "ssh", "scompile",
-             "module load {}; cd {}; {}".format(rc_modules, project_dir, cmd) ]
+    return [ "ssh", "scompile", "{}; cd {}; {}".format(rc_initialize, project_dir, cmd) ]
 
 # get output of a command
 def get_output(cmd_list):
@@ -65,6 +65,8 @@ job_text = "#!/usr/bin/env sh\n"
 for option in options:
     job_text += "#SBATCH --{} {}\n".format(option[0],option[1])
 job_text += "\n"
+if on_rc_server:
+    job_text += rc_initialize + "\n"
 job_text += "{}/{} ".format(project_dir, simulate) + " ".join(sim_args) + "\n"
 
 if not os.path.isdir(job_dir):
