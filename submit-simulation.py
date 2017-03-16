@@ -12,9 +12,11 @@ whide = whide_flag in sys.argv
 if whide: sys.argv.remove(whide_flag)
 
 if len(sys.argv) < 2:
-    time = "02:00:00"
+    time = "00:01:00"
 else:
-    time = sys.argv[1] + ":00"
+    time = sys.argv[1]
+    while time.count(":") < 2:
+        time += ":00"
 
 sim_args = sys.argv[2:]
 
