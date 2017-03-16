@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import sys, os, subprocess, socket
 
+project_dir = os.path.dirname(os.path.abspath(__file__))
+
 whide_flag = "whide"
-mkfac = "./mkfac.py"
-job_dir = "jobs"
+mkfac = project_dir + "/mkfac.py"
+job_dir = project_dir + "/jobs"
 simulate = "simulate.exe"
 
 # process inputs
@@ -17,8 +19,6 @@ if whide: sys.argv.remove(whide_flag)
 
 time = sys.argv[1] + ":00:00"
 sim_args = sys.argv[2:]
-
-project_dir = os.path.dirname(os.path.abspath(__file__))
 
 on_rc_server = ("colorado.edu" in socket.getfqdn())
 rc_modules = [ "gcc/6.1.0", "openmpi/1.10.2", "boost/1.61.0", "python/3.5.1" ]
@@ -50,10 +50,12 @@ if on_rc_server:
 suffix = get_output(suffix_cmd).split()[-1]
 basename = "network" + ".".join(suffix.split(".")[:-1])
 job_file = "{}/{}.sh".format(job_dir,basename)
+out_file = "{}/{}.out".format(job_dir,basename)
+err_file = "{}/{}.err".format(job_dir,basename)
 
 # set batch options
-options = [ [ "output", basename + ".out" ],
-            [ "error", basename + ".err" ],
+options = [ [ "output", out_file ],
+            [ "error", err_file ],
             [ "time", time ],
             [ "nodes", 1 ],
             [ "ntasks", 1 ],
