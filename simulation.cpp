@@ -118,8 +118,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     return 0;
   }
 
-  // by default, use the same number of patterns as nodes
-  if (pattern_number == 0) pattern_number = nodes;
+  clock_t simulation_start_time = time(NULL);
 
   // -------------------------------------------------------------------------------------
   // Process and run sanity checks on inputs
@@ -132,6 +131,9 @@ int main(const int arg_num, const char *arg_vec[]) {
     cout << "the network should consist of at least two nodes" << endl;
     return -1;
   }
+
+  // by default, use the same number of patterns as nodes
+  if (pattern_number == 0) pattern_number = nodes;
 
   if (pattern_number < 1) {
     cout << "we need at least one pattern to define a (nontrivial) network" << endl;
@@ -198,8 +200,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   //   i.e. they all contain the same number of nodes
   for (int ii = 1, size = patterns.size(); ii < size; ii++) {
     if (patterns[ii-1].size() != patterns[ii].size()){
-      cout << "patterns " << ii-1 << " and " << ii
-           << " do not have the same size!" << endl;
+      printf("patterns %u and %u do not have the same size!\n", ii-1, ii);
       return -1;
     }
   }
@@ -527,5 +528,12 @@ int main(const int arg_num, const char *arg_vec[]) {
     ns.print_distances();
     cout << endl;
   }
+
+  const long long int total_time = difftime(time(NULL), simulation_start_time);
+  const int seconds = total_time % 60;
+  const int minutes = (total_time / 60) % 60;
+  const int hours = (total_time / (60 * 60)) % (24);
+  const int days = total_time / (60 * 60 * 24);
+  printf("total simulation time: %ud %uh %um %us\n", days, hours, minutes, seconds);
 
 }
