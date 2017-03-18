@@ -437,9 +437,9 @@ double network_simulation::fractional_sample_error(const double beta_cap) const 
       //   we care about in order to avoid numerical overflows
       // this offset amounts to multiplying both (error) and (normalization) by
       //   a constant factor, which means that it does not affect (error/normalization)
-      const double ln_dos_ee = ln_dos[ee] - ln_dos[mean_energy];
-      const double energy = ee - mean_energy;
-      const long double boltzmann_factor = exp(ln_dos_ee - energy * beta_cap);
+      const long double ln_dos_ee = ln_dos[ee] - ln_dos[mean_energy];
+      const long double energy = ee - mean_energy;
+      const long double boltzmann_factor = expl(ln_dos_ee - energy * beta_cap);
       error += boltzmann_factor/sqrt(sample_histogram[ee]);
       normalization += boltzmann_factor;
     }
