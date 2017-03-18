@@ -439,7 +439,8 @@ int main(const int arg_num, const char *arg_vec[]) {
         // if enough time has passed, write intermediate data files
         if ( difftime(time(NULL), last_checkup) > print_time * 60 ) {
           const string header = file_header +
-            "# iterations: " + to_string(cycles * iterations_per_cycle) + "\n";
+            ("# inititlization iterations: "
+             + to_string(cycles * iterations_per_cycle) + "\n");
           ns.write_energy_file(energy_file, header);
           ns.write_transitions_file(transitions_file, header);
           last_checkup = time(NULL);
@@ -453,7 +454,8 @@ int main(const int arg_num, const char *arg_vec[]) {
       ns.compute_weights_from_dos(beta_cap);
 
       const string header = file_header +
-        "# iterations: " + to_string(cycles * iterations_per_cycle) + "\n";
+        ("# inititlization iterations: "
+         + to_string(cycles * iterations_per_cycle) + "\n");
       ns.write_transitions_file(transitions_file, header);
       ns.write_weights_file(weights_file, header);
 
