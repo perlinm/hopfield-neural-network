@@ -331,7 +331,8 @@ int main(const int arg_num, const char *arg_vec[]) {
     //   run the standard initialization routine
     if (!fs::exists(weights_file)) {
 
-      cout << "starting all-temperature initialization routine..." << endl;
+      cout << "starting all-temperature initialization routine..." << endl
+           << "iterations per cycle: " << iterations_per_cycle << endl;
 
       if (fs::exists(transitions_file)) {
         ns.read_transitions_file(transitions_file);
