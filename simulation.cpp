@@ -433,9 +433,12 @@ int main(const int arg_num, const char *arg_vec[]) {
         cout << fixed << setprecision(ceil(-log10(target_sample_error)) + 3)
              << sample_error << " " << cycles << endl;
 
-        // if enough time has passed, write the transitions file
+        // if enough time has passed, write intermediate data files
         if ( difftime(time(NULL), last_checkup) > print_time * 60 ) {
-          ns.write_transitions_file(transitions_file, file_header);
+          const string header = file_header +
+            "# iterations: " + to_string(cycles * iterations_per_cycle) + "\n";
+          ns.write_energy_file(energy_file, header);
+          ns.write_transitions_file(transitions_file, header);
           last_checkup = time(NULL);
         }
 
@@ -446,8 +449,10 @@ int main(const int arg_num, const char *arg_vec[]) {
 
       ns.compute_weights_from_dos(beta_cap);
 
-      // ns.write_transitions_file(transitions_file, file_header);
-      // ns.write_weights_file(weights_file, file_header);
+      const string header = file_header +
+        "# iterations: " + to_string(cycles * iterations_per_cycle) + "\n";
+      ns.write_transitions_file(transitions_file, header);
+      ns.write_weights_file(weights_file, header);
 
     } else { // the weights file already exists, so read it in
 
