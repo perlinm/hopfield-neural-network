@@ -361,8 +361,10 @@ int main(const int arg_num, const char *arg_vec[]) {
           // this update should happen regardless of whether we make the move
           ns.update_transition_histogram(old_energy, energy_change);
 
-          if (energy_change <= 0) {
-            // always accept moves into states of lower energy
+          if ((beta_cap > 0 && energy_change <= 0)
+              || (beta_cap < 0 && energy_change >= 0)) {
+            // if we're in a positive temperature simulation, always accept moves into
+            //   states of lower energy, and visa versa
             ns.state = proposed_state;
             new_energy = proposed_energy;
 
