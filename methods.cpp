@@ -179,17 +179,17 @@ double network_simulation::transition_matrix(const int final_energy,
 
 // initialize all tables: distance log, sample histogram, energy transitions
 void network_simulation::initialize_histograms() {
-  energy_histogram = vector<unsigned long long int>(energy_range, 0);
-  distance_records = vector<unsigned long long int>(energy_range, 0);
+  energy_histogram = vector<long>(energy_range, 0);
+  distance_records = vector<long>(energy_range, 0);
 
   visit_log = vector<bool>(energy_range, true);
-  sample_histogram = vector<unsigned long long int>(energy_range, 0);
+  sample_histogram = vector<long>(energy_range, 0);
 
-  distance_logs = vector<vector<unsigned long long int>>(energy_range);
-  transition_histogram = vector<vector<unsigned long long int>>(energy_range);
+  distance_logs = vector<vector<long>>(energy_range);
+  transition_histogram = vector<vector<long>>(energy_range);
   for (int ee = 0; ee < energy_range; ee++) {
-    distance_logs[ee] = vector<unsigned long long int>(pattern_number, 0);
-    transition_histogram[ee] = vector<unsigned long long int>(2*max_de + 1, 0);
+    distance_logs[ee] = vector<long>(pattern_number, 0);
+    transition_histogram[ee] = vector<long>(2*max_de + 1, 0);
   }
 }
 
@@ -654,7 +654,7 @@ void network_simulation::print_patterns() const {
 //   the energy histogram, sample histogram, density of states, and weight
 void network_simulation::print_energy_data() const {
   // get the maximum value in the energy histogram
-  unsigned long long int most_observations = 0;
+  long most_observations = 0;
   for (int ee = 0; ee < energy_range; ee++) {
     most_observations = max(energy_histogram[ee], most_observations);
   }
@@ -686,7 +686,7 @@ void network_simulation::print_distances() const {
   const int distance_dec = 6;
   for (int ee = energy_range - 1; ee >= 0; ee--) {
     // check that we have sampled this energy
-    const unsigned long long int observations = distance_records[ee];
+    const long observations = distance_records[ee];
     if (observations == 0) continue;
 
     cout << setw(energy_width) << network.actual_energy(ee);

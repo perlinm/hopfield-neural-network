@@ -24,8 +24,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   const int help_text_length = 85;
 
   bool debug;
-  unsigned long long int seed;
-  unsigned long long int pattern_seed;
+  long seed;
+  long pattern_seed;
   bool print_suffix;
 
   po::options_description general("General options", help_text_length);
@@ -33,9 +33,9 @@ int main(const int arg_num, const char *arg_vec[]) {
     ("help,h", "produce help message")
     ("debug", po::value<bool>(&debug)->default_value(false)->implicit_value(true),
      "enable debug mode")
-    ("seed", po::value<unsigned long long int>(&seed)->default_value(0),
+    ("seed", po::value<long>(&seed)->default_value(0),
      "seed for random number generator")
-    ("pattern_seed", po::value<unsigned long long int>(&pattern_seed)->default_value(0),
+    ("pattern_seed", po::value<long>(&pattern_seed)->default_value(0),
      "random number generator seed when generating patterns")
     ("suffix", po::value<bool>(&print_suffix)->default_value(false)->implicit_value(true),
      "print the file suffix associated with this simulation instead of running it")
@@ -216,8 +216,9 @@ int main(const int arg_num, const char *arg_vec[]) {
   const double beta_cap = input_beta_cap * ns.network.energy_scale / ns.network.nodes;
 
   // number of iterations per initialization cycle
-  const int iterations_per_cycle
+  const long long iterations_per_cycle
     = ns.network.nodes * ns.pattern_number * pow(10, init_factor);
+  assert(iterations_per_cycle > 0);
 
   // print some info about the simulation
   cout << "nodes: " << ns.network.nodes << endl
@@ -296,7 +297,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     cout << "initializing a fixed temperature simulation" << endl << endl;
 
     // run for one initialization cycle in order to locate the entropy peak
-    for (int ii = 0; ii < iterations_per_cycle; ii++) {
+    for (long long ii = 0; ii < iterations_per_cycle; ii++) {
 
       // make a random move and update the energy histogram
       ns.state = random_change(ns.state, rnd(generator));
@@ -338,7 +339,7 @@ int main(const int arg_num, const char *arg_vec[]) {
       int old_energy = ns.energy(); // energy of the last state
       assert(old_energy < ns.energy_range);
       do {
-        for (int ii = 0; ii < iterations_per_cycle; ii++) {
+        for (long long ii = 0; ii < iterations_per_cycle; ii++) {
 
           // construct the state which we are proposing to move into
           const vector<bool> proposed_state = random_change(ns.state, rnd(generator));
@@ -436,8 +437,8 @@ int main(const int arg_num, const char *arg_vec[]) {
 
       ns.compute_weights_from_dos(beta_cap);
 
-      ns.write_transitions_file(transitions_file, file_header);
-      ns.write_weights_file(weights_file, file_header);
+      // ns.write_transitions_file(transitions_file, file_header);
+      // ns.write_weights_file(weights_file, file_header);
 
     } else { // the weights file already exists, so read it in
 
@@ -467,7 +468,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   int new_energy; // energy of the state we move into
   int old_energy = ns.energy(); // energy of the last state
   assert(old_energy < ns.energy_range);
-  for (unsigned long long ii = 0; ii < pow(10,log10_iterations); ii++) {
+  for (long long ii = 0; ii < pow(10,log10_iterations); ii++) {
 
     // construct the state which we are proposing to move into,
     //   and compute its energy
@@ -516,7 +517,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   // write final data files
   cout << "simulation complete" << endl;
   const string header = (file_header + "# iterations: "
-                         + to_string((unsigned long long int)pow(10,log10_iterations))
+                         + to_string((long long)pow(10,log10_iterations))
                          + "\n");
   ns.write_energy_file(energy_file, header);
   ns.write_distance_file(distance_file, header);
@@ -529,7 +530,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     cout << endl;
   }
 
-  const long long int total_time = difftime(time(NULL), simulation_start_time);
+  const int total_time = difftime(time(NULL), simulation_start_time);
   const int seconds = total_time % 60;
   const int minutes = (total_time / 60) % 60;
   const int hours = (total_time / (60 * 60)) % (24);

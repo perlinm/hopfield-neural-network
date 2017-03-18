@@ -67,21 +67,21 @@ struct network_simulation {
   vector<bool> state;
 
   // histogram containing the number of times we have seen every energy
-  vector<unsigned long long int> energy_histogram;
+  vector<long> energy_histogram;
 
   // stores the sum of all distances from every pattern at each energy
   // indexed by (energy, pattern)
   // dividing distance_logs[ee][pp] by energy_histogram[ee] tells us
   //   the mean distance from pattern pp at the energy ee
-  vector<vector<unsigned long long int>> distance_logs;
+  vector<vector<long>> distance_logs;
 
   // number of times we have recorded distance at a given energy
-  vector<unsigned long long int> distance_records;
+  vector<long> distance_records;
 
   // stores the number times we have proposed a move
   //   from a given energy with a specified energy difference
   // indexed by (energy, change in energy)
-  vector<vector<unsigned long long int>> transition_histogram;
+  vector<vector<long>> transition_histogram;
 
   // visit_log[ee] answers the question: have we visited the energy ee
   // at least once since the last observation of a maximual entropy state?
@@ -90,7 +90,7 @@ struct network_simulation {
   // stores the number of independent samples of any energy
   // two samples of a given energy are considered independent if
   //   we have made a visit to the maximal entropy state between them
-  vector<unsigned long long int> sample_histogram;
+  vector<long> sample_histogram;
 
   // logarithm of the weights which determine the probability
   //   of accepting a move between two energies during simulation
