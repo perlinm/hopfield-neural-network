@@ -124,32 +124,41 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Process and run sanity checks on inputs
   // -------------------------------------------------------------------------------------
 
-  if (input_beta_cap == 0) fixed_temp = true;
-
   // we should have at least two nodes, and at least one pattern
   if (nodes < 2) {
     cout << "the network should consist of at least two nodes" << endl;
     return -1;
   }
 
+  // don't allow attempts to simulate too large of a network
+  assert(nodes < 300);
+
   // by default, use the same number of patterns as nodes
+  assert(pattern_number >= 0);
   if (pattern_number == 0) pattern_number = nodes;
 
-  if (pattern_number < 1) {
-    cout << "we need at least one pattern to define a (nontrivial) network" << endl;
-    return -1;
-  }
+  assert(log10_iterations > 0);
+  assert(init_factor > 0);
+
+  // make sure that iteration counters/factors aren't too large
+  assert(log10_iterations < 18);
+  assert(log10(nodes) + log10(pattern_number) + init_factor < 10);
+
+  // if we're doing an infinite temperature simulation,
+  //   we don't need the machinery of weights, etc.
+  if (input_beta_cap == 0) fixed_temp = true;
 
   // we can specify either nodes, or a pattern file; not both
   if (!nodes && pattern_file.empty()) {
-    cout << "either choose a size (number of nodes) for a network"
-         << " with random patterns, or provide a pattern file" << endl;
+    cout << "either choose a network size (i.e. number of nodes)"
+         << " with random number of patterns, or provide a pattern file" << endl;
     return -1;
   }
 
   // if we specified a pattern file, make sure it exists
   if (!pattern_file.empty() && !fs::exists(pattern_file)) {
-    cout << "the specified pattern file does not exist!" << endl;
+    cout << "the specified pattern file does not exist:" << endl
+         << pattern_file << endl;
     return -1;
   }
 
