@@ -4,6 +4,7 @@
 #include <sstream> // for string streams
 #include <algorithm> // for sort method
 #include <fstream> // for stream objects
+#include <limits> // for numeric limits
 
 #include "methods.h"
 
@@ -429,22 +430,33 @@ double network_simulation::fractional_sample_error(const double beta_cap) const 
   const int mean_energy = (highest_energy + lowest_energy) / 2;
 
   // sum up the fractional error in sample counts with appropriate boltzmann factors
-  long double error = 0;
-  long double normalization = 0; // this is the partition function
+  double ln_error = 0;
+  double ln_normalization = 0; // this is the partition function
+  const double exp_factor_limit = log(numeric_limits<long double>::max()) - 1;
   for (int ee = lowest_energy; ee < highest_energy; ee++) {
     if (sample_histogram[ee] != 0) {
-      // offset ln_dos[ee] and the energy ee by their values at the mean energy
-      //   we care about in order to avoid numerical overflows
-      // this offset amounts to multiplying both (error) and (normalization) by
-      //   a constant factor, which means that it does not affect (error/normalization)
-      const long double ln_dos_ee = ln_dos[ee] - ln_dos[mean_energy];
-      const long double energy = ee - mean_energy;
-      const long double boltzmann_factor = expl(ln_dos_ee - energy * beta_cap);
-      error += boltzmann_factor/sqrt(sample_histogram[ee]);
-      normalization += boltzmann_factor;
+      // use trickery to avoid problems with numerical overflows
+      const double ln_dos_ee = ln_dos[ee] - ln_dos[mean_energy];
+      const double energy = ee - mean_energy;
+      const double ln_boltzmann_factor = ln_dos_ee - energy * beta_cap;
+
+      const double error_exp_factor
+        = ln_boltzmann_factor - log(sqrt(sample_histogram[ee])) - ln_error;
+      if (error_exp_factor > exp_factor_limit) {
+        ln_error += error_exp_factor;
+      } else if (!(-error_exp_factor > exp_factor_limit)) {
+        ln_error += log(1 + expl(error_exp_factor));
+      }
+
+      const double normalization_exp_factor = ln_boltzmann_factor - ln_normalization;
+      if (normalization_exp_factor > exp_factor_limit) {
+        ln_normalization += normalization_exp_factor;
+      } else if (!(-normalization_exp_factor > exp_factor_limit)) {
+        ln_normalization += log(1 + expl(normalization_exp_factor));
+      }
     }
   }
-  return error/normalization;
+  return exp(ln_error - ln_normalization);
 }
 
 // ---------------------------------------------------------------------------------------
