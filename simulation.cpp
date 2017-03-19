@@ -79,7 +79,6 @@ int main(const int arg_num, const char *arg_vec[]) {
     ;
 
   double target_sample_error;
-  int tpff; // "transition probability fudge factor"
 
   po::options_description all_temps_options("All temperature simulation options",
                                             help_text_length);
@@ -87,9 +86,6 @@ int main(const int arg_num, const char *arg_vec[]) {
     ("sample_error", po::value<double>(&target_sample_error)->default_value(0.01,"0.01"),
      "the initialization routine terminates when it achieves this"
      " expected fractional sample error at an inverse temperature beta_cap")
-    ("transition_factor", po::value<int>(&tpff)->default_value(1),
-     "fudge factor in computation of move acceptance probability"
-     " during transition matrix initialization")
     ;
 
   string data_dir;
@@ -364,32 +360,21 @@ int main(const int arg_num, const char *arg_vec[]) {
 
           if ((beta_cap > 0 && energy_change <= 0)
               || (beta_cap < 0 && energy_change >= 0)) {
-            // if we're in a positive temperature simulation, always accept moves into
-            //   states of lower energy, and visa versa
+            // always accept moves to a lower energy in a positive temperature simulation,
+            //   and "" higher energy "" negative temperature ""
             ns.state = proposed_state;
             new_energy = proposed_energy;
 
           } else { // accept the moves to higher energy states with some probability
 
-            // normalization factor for transitions from both energies
-            const double old_norm = ns.transitions_from(old_energy);
-            const double new_norm = ns.transitions_from(proposed_energy);
-
-            // compute the (normalized) flux of proposed moves forward and backward
+            // compute the (unnormalized) flux of proposed moves forward and backward
             //   between the current and proposed energies
-            // add fudge factors (tpff) which will make the rejection of transitions
-            //   more conservative when we have poor statistics (few counts)
-            //   in the transition histogram
-            // the effect of these fudge factors vanishes as the number of counts
-            //   in the transition matrix increases
-            // these fudge factors effectively prevent us from getting stuck
-            //   at low energies
-            const double forward_flux
-              = (double(ns.transitions(old_energy, energy_change) + tpff)
-                 / (old_norm + tpff));
-            const double backward_flux
-              = (double(ns.transitions(proposed_energy, -energy_change) + tpff)
-                 / (new_norm + tpff));
+            const long forward_flux = ns.transitions(old_energy, energy_change);
+            const long backward_flux = ns.transitions(proposed_energy, -energy_change);
+
+            // normalization factor for transition fluxes from both energies
+            const long forward_norm = ns.transitions_from(old_energy);
+            const long backward_norm = ns.transitions_from(proposed_energy);
 
             // in order to get good statistics on the transition matrix,
             //   we wish to sample all energies as equally as we can
@@ -397,13 +382,23 @@ int main(const int arg_num, const char *arg_vec[]) {
             //   say, twice the backwards flux F_{f->i}, then to sample E_i and E_f
             //   equally we should reject half of the proposed moves from E_i to E_f
             // in general, the acceptance probability to sample E_i and E_f equally
-            //   is F_{i->f} / F_{f->i}
+            //   is F_{f->i} / F_{i->f}
             // there is no reason, however, to have acceptance probabilities lower
             //   than the ratio of boltzmann weights on E_i and E_f, as otherwise
             //   we are spending more time sampling E_i (relative to E_f) than we would
             //   at the minimum temperature of the simulation
-            const double acceptance_probability = max(forward_flux / backward_flux,
-                                                      exp(-energy_change * beta_cap));
+            const double acceptance_probability = [&]() -> double {
+              const double max_probability = exp(-energy_change * beta_cap);
+              if (backward_flux == 0) return max_probability;
+
+              const double flux_ratio = (double(backward_flux * forward_norm)
+                                         / (forward_flux * backward_norm));
+              const double confidence = 1/double(backward_flux);
+              const double probability = max(flux_ratio, confidence);
+
+              if (probability < max_probability) return max_probability;
+              return probability;
+            }();
 
             // if we pass a probability test, accept the move
             if (rnd(generator) < acceptance_probability) {

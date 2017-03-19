@@ -143,14 +143,14 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
 // ---------------------------------------------------------------------------------------
 
 // number of attempted transitions from a given energy with a specified energy change
-int network_simulation::transitions(const int energy, const int energy_change) const {
+long network_simulation::transitions(const int energy, const int energy_change) const {
   return transition_histogram[energy][energy_change + max_de];
 }
 
 // number of attempted transitions from a given energy into any other energy
-int network_simulation::transitions_from(const int energy) const {
-  int count = 0;
-  for (int de = -max_de; de <= max_de; de++) {
+long network_simulation::transitions_from(const int energy) const {
+  long count = 0;
+  for (long de = -max_de; de <= max_de; de++) {
     count += transitions(energy, de);
   }
   return count;
@@ -164,7 +164,7 @@ double network_simulation::transition_matrix(const int final_energy,
   if (abs(energy_change) > max_de) return 0;
 
   // normalization factor: sum of all transitions from the initial energy
-  const int normalization = transitions_from(initial_energy);
+  const long normalization = transitions_from(initial_energy);
 
   // if the normalization factor is zero, it's because we have never seen this energy
   // by default, set these elements of the transition energy to zero

@@ -108,10 +108,10 @@ struct network_simulation {
   // -------------------------------------------------------------------------------------
 
   // number of attempted transitions from a given energy with a specified energy change
-  int transitions(const int energy, const int energy_change) const;
+  long transitions(const int energy, const int energy_change) const;
 
   // number of attempted transitions from a given energy into any other energy
-  int transitions_from(const int energy) const;
+  long transitions_from(const int energy) const;
 
   // elements of the actual normalized transition matrix:
   //   the probability of proposing a move from a given initial energy
