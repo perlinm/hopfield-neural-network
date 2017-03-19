@@ -388,13 +388,13 @@ int main(const int arg_num, const char *arg_vec[]) {
             //   we are spending more time sampling E_i (relative to E_f) than we would
             //   at the minimum temperature of the simulation
             const double acceptance_probability = [&]() -> double {
-              const double max_probability = exp(-energy_change * beta_cap);
-              if (backward_flux == 0) return max_probability;
+              if (backward_flux == 0) return 1;
 
               const double flux_ratio = (double(backward_flux * forward_norm)
                                          / (forward_flux * backward_norm));
               const double confidence = 1/double(backward_flux);
               const double probability = max(flux_ratio, confidence);
+              const double max_probability = exp(-energy_change * beta_cap);
 
               if (probability < max_probability) return max_probability;
               return probability;
