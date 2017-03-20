@@ -214,9 +214,57 @@ int main(const int arg_num, const char *arg_vec[]) {
   nodes = patterns[0].size();
   pattern_number = patterns.size();
 
+  // make a hash of the patterns and target sample error to identify this simulation
+  const size_t hash = [&]() -> size_t {
+    size_t running_hash = 0;
+    for (int pp = 0; pp < pattern_number; pp++) {
+      for (int nn = 0; nn < nodes; nn++) {
+        bo::hash_combine(running_hash, size_t(patterns[pp][nn]));
+      }
+    }
+    bo::hash_combine(running_hash, input_beta_cap);
+    bo::hash_combine(running_hash, target_sample_error);
+    return running_hash;
+  }();
+
+  // suffix to all data files read/written by this simulation
+  const string beta_tag = ("-" + string(fixed_temp ? "f" : "") + "B"
+                           + string(input_beta_cap < 0 ? "n" : "")
+                           + to_string(int(round(abs(input_beta_cap)))));
+  const string node_tag = "-N" + to_string(nodes);
+  const string pattern_tag = "-P" + to_string(pattern_number);
+  const string file_suffix = (node_tag + pattern_tag + beta_tag
+                              + "-h" + to_string(hash) + ".txt");
+
+  if (print_suffix) {
+    cout << file_suffix << endl;
+    return 0;
+  }
+
+  // paths to data files
+  const string transitions_file
+    = (fs::path(data_dir) / fs::path("transitions" + file_suffix)).string();
+  const string weights_file
+    = (fs::path(data_dir) / fs::path("weights" + file_suffix)).string();
+  const string energy_file
+    = (fs::path(data_dir) / fs::path("energies" + file_suffix)).string();
+  const string distance_file
+    = (fs::path(data_dir) / fs::path("distances" + file_suffix)).string();
+
   // construct network simulation object with a random initial state
   generator.seed(seed);
   network_simulation ns(patterns, random_state(nodes, rnd, generator));
+
+  // header for all data files
+  stringstream file_header_stream;
+  file_header_stream << "# nodes: " << ns.network.nodes << endl
+                     << "# patterns: " << ns.pattern_number << endl
+                     << "# energy_scale: " << ns.network.energy_scale << endl
+                     << "# energy_range: " << ns.energy_range << endl
+                     << "# max_de: " << ns.max_de << endl
+                     << "# beta_cap: " << input_beta_cap << endl
+                     << "# target_sample_error: " << target_sample_error << endl;
+  const string file_header = file_header_stream.str();
 
   // inverse temperature in units compatible with that for our energies
   const double beta_cap = input_beta_cap * ns.network.energy_scale / ns.network.nodes;
@@ -235,60 +283,11 @@ int main(const int arg_num, const char *arg_vec[]) {
        << "maximum energy change: " << ns.network.max_energy_change << endl
        << endl;
 
-  // make a hash of the patterns and target sample error to identify this simulation
-  const size_t hash = [&]() -> size_t {
-    size_t running_hash = 0;
-    for (int pp = 0; pp < ns.pattern_number; pp++) {
-      for (int nn = 0; nn < ns.network.nodes; nn++) {
-        bo::hash_combine(running_hash, size_t(patterns[pp][nn]));
-      }
-    }
-    bo::hash_combine(running_hash, input_beta_cap);
-    bo::hash_combine(running_hash, target_sample_error);
-    return running_hash;
-  }();
-
-  // suffix to all data files read/written by this simulation
-  const string beta_tag = ("-" + string(fixed_temp ? "f" : "") + "B"
-                           + string(input_beta_cap < 0 ? "n" : "")
-                           + to_string(int(round(abs(input_beta_cap)))));
-  const string node_tag = "-N" + to_string(ns.network.nodes);
-  const string pattern_tag = "-P" + to_string(ns.pattern_number);
-  const string file_suffix = (node_tag + pattern_tag + beta_tag
-                              + "-h" + to_string(hash) + ".txt");
-
-  // paths to data files
-  const string transitions_file
-    = (fs::path(data_dir) / fs::path("transitions" + file_suffix)).string();
-  const string weights_file
-    = (fs::path(data_dir) / fs::path("weights" + file_suffix)).string();
-  const string energy_file
-    = (fs::path(data_dir) / fs::path("energies" + file_suffix)).string();
-  const string distance_file
-    = (fs::path(data_dir) / fs::path("distances" + file_suffix)).string();
-
-  // header for all data files
-  stringstream file_header_stream;
-  file_header_stream << "# nodes: " << ns.network.nodes << endl
-                     << "# patterns: " << ns.pattern_number << endl
-                     << "# energy_scale: " << ns.network.energy_scale << endl
-                     << "# energy_range: " << ns.energy_range << endl
-                     << "# max_de: " << ns.max_de << endl
-                     << "# beta_cap: " << input_beta_cap << endl
-                     << "# target_sample_error: " << target_sample_error << endl;
-  const string file_header = file_header_stream.str();
-
   if (!suppress) {
     ns.print_patterns();
     cout << endl;
     ns.network.print_couplings();
     cout << endl;
-  }
-
-  if (print_suffix) {
-    cout << "output file suffix:" << endl
-         << file_suffix << endl;
-    return 0;
   }
 
   // -------------------------------------------------------------------------------------
