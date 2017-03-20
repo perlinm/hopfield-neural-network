@@ -279,9 +279,9 @@ void network_simulation::compute_dos_from_transitions() {
     // pick an initial guess for the density of states at the energy ee
     ln_dos[ee] = ln_dos[ee-1];
 
-    // if we have never actually seen this energy, we don't care to correct
-    //   the previous guess, so go on to the next energy
-    if (energy_histogram[ee] == 0) continue;
+    // if we haven't seen this energy to get any real statistics on transitions from it,
+    //   we don't care to correct the previous guess, so go on to the next energy
+    if (energy_histogram[ee] < max_de) continue;
 
     // given our guess for the density of states at the energy ee,
     //   compute the net transition fluxes up to ee from below (i.e. from lower energies),
