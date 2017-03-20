@@ -221,7 +221,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   const double beta_cap = input_beta_cap * ns.network.energy_scale / ns.network.nodes;
 
   // number of iterations per initialization cycle
-  const long long iterations_per_cycle
+  const long iterations_per_cycle
     = ns.network.nodes * ns.pattern_number * pow(10, init_factor);
   assert(iterations_per_cycle > 0);
 
@@ -300,7 +300,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     cout << "initializing a fixed temperature simulation" << endl;
 
     // run for one initialization cycle in order to locate the entropy peak
-    for (long long ii = 0; ii < iterations_per_cycle; ii++) {
+    for (long ii = 0; ii < iterations_per_cycle; ii++) {
 
       // make a random move and update the energy histogram
       ns.state = random_change(ns.state, rnd(generator));
@@ -343,7 +343,7 @@ int main(const int arg_num, const char *arg_vec[]) {
       int old_energy = ns.energy(); // energy of the last state
       assert(old_energy < ns.energy_range);
       do {
-        for (long long ii = 0; ii < iterations_per_cycle; ii++) {
+        for (long ii = 0; ii < iterations_per_cycle; ii++) {
 
           // construct the state which we are proposing to move into
           const vector<bool> proposed_state = random_change(ns.state, rnd(generator));
@@ -470,7 +470,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   int new_energy; // energy of the state we move into
   int old_energy = ns.energy(); // energy of the last state
   assert(old_energy < ns.energy_range);
-  for (long long ii = 0; ii < pow(10,log10_iterations); ii++) {
+  for (long ii = 0; ii < pow(10,log10_iterations); ii++) {
 
     // construct the state which we are proposing to move into,
     //   and compute its energy
@@ -509,7 +509,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     if ( difftime(time(NULL), last_data_print_time) > print_time * 60 ) {
       cout << "iterations: " << ii << endl;
       const string header = (file_header +
-                             "# iterations: " + to_string((long long)ii) + "\n");
+                             "# iterations: " + to_string((long)ii) + "\n");
       ns.write_energy_file(energy_file, header);
       ns.write_distance_file(distance_file, header);
       cout << endl;
@@ -520,7 +520,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   // write final data files
   cout << "simulation complete" << endl;
   const string header = (file_header + "# iterations: "
-                         + to_string((long long)pow(10,log10_iterations)) + "\n");
+                         + to_string((long)pow(10,log10_iterations)) + "\n");
   ns.write_energy_file(energy_file, header);
   ns.write_distance_file(distance_file, header);
 
