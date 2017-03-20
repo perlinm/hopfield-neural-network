@@ -9,6 +9,17 @@
 
 using namespace std;
 
+string time_string(const int total_seconds) {
+  const int seconds = total_seconds % 60;
+  const int minutes = (total_seconds / 60) % 60;
+  const int hours = (total_seconds / (60 * 60)) % (24);
+  const int days = total_seconds / (60 * 60 * 24);
+  return (to_string(days) + "d "
+          + to_string(hours) + "h "
+          + to_string(minutes) + "d "
+          + to_string(seconds) + "s");
+}
+
 // greatest common divisor
 int gcd(const int a, const int b) {
   if (b == 0) return a;
@@ -453,7 +464,6 @@ double network_simulation::fractional_sample_error(const double beta_cap) const 
 
 void network_simulation::write_transitions_file(const string transitions_file,
                                                 const string file_header) const {
-  cout << "writing transition matrix" << endl;
   ofstream transition_stream(transitions_file);
   transition_stream << file_header << endl
                     << "# (row)x(column) = (energy)x(de)" << endl;
@@ -471,7 +481,6 @@ void network_simulation::write_transitions_file(const string transitions_file,
 
 void network_simulation::write_weights_file(const string weights_file,
                                             const string file_header) const {
-  cout << "writing weight array" << endl;
   ofstream weight_stream(weights_file);
   weight_stream << file_header << endl
                 << "# energy, ln_weight" << endl;
@@ -486,7 +495,6 @@ void network_simulation::write_weights_file(const string weights_file,
 
 void network_simulation::write_energy_file(const string energy_file,
                                            const string file_header) const {
-  cout << "writing energy histogram" << endl;
   ofstream energy_stream(energy_file);
   energy_stream << file_header << endl
                 << "# energy, energy histogram, sample histogram" << endl;
@@ -501,7 +509,6 @@ void network_simulation::write_energy_file(const string energy_file,
 
 void network_simulation::write_distance_file(const string distance_file,
                                              const string file_header) const {
-  cout << "writing distance log" << endl;
   ofstream distance_stream(distance_file);
   distance_stream << file_header << endl
                   << "# energy, distance records, distance log..." << endl;

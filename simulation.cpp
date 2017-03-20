@@ -42,6 +42,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     ;
 
   int nodes;
+  const int node_max = 500;
   int pattern_number;
   string pattern_file;
 
@@ -127,7 +128,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   }
 
   // don't allow attempts to simulate too large of a network
-  assert(nodes < 300);
+  assert(nodes <= node_max);
 
   // by default, use the same number of patterns as nodes
   assert(pattern_number >= 0);
@@ -455,6 +456,9 @@ int main(const int arg_num, const char *arg_vec[]) {
   } // complete initialization
   cout << endl;
 
+  const int init_time = difftime(time(NULL), simulation_start_time);
+  cout << "initialization time: " << time_string(init_time) << endl << endl;
+
   if (!suppress) {
     ns.print_energy_data();
     cout << endl;
@@ -538,10 +542,6 @@ int main(const int arg_num, const char *arg_vec[]) {
   }
 
   const int total_time = difftime(time(NULL), simulation_start_time);
-  const int seconds = total_time % 60;
-  const int minutes = (total_time / 60) % 60;
-  const int hours = (total_time / (60 * 60)) % (24);
-  const int days = total_time / (60 * 60 * 24);
-  printf("total simulation time: %ud %uh %um %us\n", days, hours, minutes, seconds);
+  cout << "total run time: " << time_string(total_time) << endl;
 
 }

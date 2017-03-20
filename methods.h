@@ -4,6 +4,8 @@
 
 using namespace std;
 
+string time_string(const int total_seconds);
+
 // greatest common divisor
 int gcd(const int a, const int b);
 
