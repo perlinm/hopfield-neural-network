@@ -381,19 +381,24 @@ int main(const int arg_num, const char *arg_vec[]) {
             //   equally we should reject half of the proposed moves from E_i to E_f
             // in general, the acceptance probability to sample E_i and E_f equally
             //   is F_{f->i} / F_{i->f}
-            // there is no reason, however, to have acceptance probabilities lower
-            //   than the ratio of boltzmann weights on E_i and E_f, as otherwise
-            //   we are spending more time sampling E_i (relative to E_f) than we would
-            //   at the minimum temperature of the simulation
             const double acceptance_probability = [&]() -> double {
+              // if we've never made the transition f->i, accept this move
               if (backward_flux == 0) return 1;
 
+              // otherwise compute the flux ratio F_{f->i} / F_{i->f}
               const double flux_ratio = (double(backward_flux * forward_norm)
                                          / (forward_flux * backward_norm));
-              const double confidence = 1/double(backward_flux);
-              const double probability = max(flux_ratio, confidence);
-              const double max_probability = exp(-energy_change * beta_cap);
+              // set the probability equal to the flux ratio, but cap it (i.e. enforce
+              //   a maximum) in such a way that if we have little data on the backward
+              //   flux F_{f->i}, we are more likely to accept the move
+              const double confidence_cap = 1/double(backward_flux);
+              const double probability = max(flux_ratio, confidence_cap);
 
+              // cap the acceptance probability at the ratio of boltzmann weights
+              //   on E_i and E_f, as otherwise we are spending more time sampling E_i
+              //   (relative to E_f) than we would at the minimum temperature of
+              //   interest in this simulation
+              const double max_probability = exp(-energy_change * beta_cap);
               if (probability < max_probability) return max_probability;
               return probability;
             }();
