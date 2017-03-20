@@ -72,7 +72,7 @@ int main(const int arg_num, const char *arg_vec[]) {
      " of interest in the simulation")
     ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
      "log10 of the number of iterations to simulate")
-    ("init_factor", po::value<int>(&init_factor)->default_value(5),
+    ("init_factor", po::value<int>(&init_factor)->default_value(4),
      "run for nodes * pattern_number * 10^(init_factor) iterations"
      " per initialization cycle")
     ("print_time", po::value<int>(&print_time)->default_value(30),
