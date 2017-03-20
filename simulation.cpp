@@ -23,7 +23,7 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   const int help_text_length = 85;
 
-  bool debug;
+  bool suppress;
   long seed;
   long pattern_seed;
   bool print_suffix;
@@ -31,8 +31,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   po::options_description general("General options", help_text_length);
   general.add_options()
     ("help,h", "produce help message")
-    ("debug", po::value<bool>(&debug)->default_value(false)->implicit_value(true),
-     "enable debug mode")
+    ("suppress", po::value<bool>(&suppress)->default_value(false)->implicit_value(true),
+     "suppress some of the text that would normally be printed")
     ("seed", po::value<long>(&seed)->default_value(0),
      "seed for random number generator")
     ("pattern_seed", po::value<long>(&pattern_seed)->default_value(0),
@@ -277,7 +277,7 @@ int main(const int arg_num, const char *arg_vec[]) {
                      << "# target_sample_error: " << target_sample_error << endl;
   const string file_header = file_header_stream.str();
 
-  if (debug) {
+  if (!suppress) {
     ns.print_patterns();
     cout << endl;
     ns.network.print_couplings();
@@ -450,7 +450,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   } // complete initialization
   cout << endl;
 
-  if (debug) {
+  if (!suppress) {
     ns.print_energy_data();
     cout << endl;
   }
@@ -524,7 +524,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   ns.write_energy_file(energy_file, header);
   ns.write_distance_file(distance_file, header);
 
-  if (debug) {
+  if (!suppress) {
     cout << endl;
     ns.print_energy_data();
     cout << endl;
