@@ -137,8 +137,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   assert(init_factor > 0);
 
   // make sure that iteration counters/factors aren't too large
-  assert(log10_iterations < 18);
-  assert(log10(nodes) + log10(pattern_number) + init_factor < 10);
+  assert(log10_iterations < log10(LONG_MAX));
+  assert(log10(nodes) + log10(pattern_number) + init_factor < log10(LONG_MAX));
 
   // if we're doing an infinite temperature simulation,
   //   we don't need the machinery of weights, etc.
