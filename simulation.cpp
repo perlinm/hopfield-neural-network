@@ -365,15 +365,6 @@ int main(const int arg_num, const char *arg_vec[]) {
 
           } else { // accept the moves to higher energy states with some probability
 
-            // compute the (unnormalized) flux of proposed moves forward and backward
-            //   between the current and proposed energies
-            const long forward_flux = ns.transitions(old_energy, energy_change);
-            const long backward_flux = ns.transitions(proposed_energy, -energy_change);
-
-            // normalization factor for transition fluxes from both energies
-            const long forward_norm = ns.transitions_from(old_energy);
-            const long backward_norm = ns.transitions_from(proposed_energy);
-
             // in order to get good statistics on the transition matrix,
             //   we wish to sample all energies as equally as we can
             // if the forward flux F_{i->f} of proposed moves from E_i to E_f is,
@@ -382,25 +373,33 @@ int main(const int arg_num, const char *arg_vec[]) {
             // in general, the acceptance probability to sample E_i and E_f equally
             //   is F_{f->i} / F_{i->f}
             const double acceptance_probability = [&]() -> double {
+              // compute the (unnormalized) flux of proposed moves forward and backward
+              //   between the current and proposed energies
+              const long backward_moves = ns.transitions(proposed_energy, -energy_change);
               // if we've never made the transition f->i, accept this move
-              if (backward_flux == 0) return 1;
+              if (backward_moves == 0) return 1;
+              const long forward_moves = ns.transitions(old_energy, energy_change);
 
-              // otherwise compute the flux ratio F_{f->i} / F_{i->f}
-              const double flux_ratio = (double(backward_flux * forward_norm)
-                                         / (forward_flux * backward_norm));
-              // set the probability equal to the flux ratio, but cap it (i.e. enforce
-              //   a maximum) in such a way that if we have little data on the backward
-              //   flux F_{f->i}, we are more likely to accept the move
-              const double confidence_cap = 1/double(backward_flux);
-              const double probability = max(flux_ratio, confidence_cap);
+              // normalization factor for transition fluxes from both energies
+              const long backward_norm = ns.transitions_from(proposed_energy);
+              const long forward_norm = ns.transitions_from(old_energy);
 
-              // cap the acceptance probability at the ratio of boltzmann weights
-              //   on E_i and E_f, as otherwise we are spending more time sampling E_i
-              //   (relative to E_f) than we would at the minimum temperature of
-              //   interest in this simulation
-              const double max_probability = exp(-energy_change * beta_cap);
-              if (probability < max_probability) return max_probability;
-              return probability;
+              // compute the flux ratio F_{f->i} / F_{i->f}
+              const double flux_ratio = (double(backward_moves * forward_norm)
+                                         / (forward_moves * backward_norm));
+
+              // enforce a minimum probability based on:
+              //  i) how many times we have tried to make the backward move f->i;
+              //     if we have barely ever tried to move f->i, we want to be more likely
+              //     to move into E_f to gather more statistics on transitions from it
+              // ii) the ratio of boltzmann weights on E_i and E_f at the minimum
+              //     temperature of interest in this simulation;
+              //     we don't want to oversample E_i relative to E_f
+              const double sample_floor = 1.0/backward_moves;
+              const double boltzmann_floor = exp(-energy_change * beta_cap);
+              const double min_probability = max(sample_floor, boltzmann_floor);
+
+              return max(flux_ratio, min_probability);
             }();
 
             // if we pass a probability test, accept the move
