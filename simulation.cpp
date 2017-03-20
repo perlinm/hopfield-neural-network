@@ -294,12 +294,10 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Initialize the weight array
   // -------------------------------------------------------------------------------------
 
-  clock_t last_checkup = time(NULL); // keep time to periodically write data files
-
   // initialize weight array
   if (fixed_temp) {
 
-    cout << "initializing a fixed temperature simulation" << endl << endl;
+    cout << "initializing a fixed temperature simulation" << endl;
 
     // run for one initialization cycle in order to locate the entropy peak
     for (long long ii = 0; ii < iterations_per_cycle; ii++) {
@@ -431,28 +429,17 @@ int main(const int arg_num, const char *arg_vec[]) {
         cout << fixed << setprecision(ceil(-log10(target_sample_error)) + 3)
              << sample_error << " " << cycles << endl;
 
-        // if enough time has passed, write intermediate data files
-        if ( difftime(time(NULL), last_checkup) > print_time * 60 ) {
-          const string header = file_header +
-            ("# initialization iterations: "
-             + to_string(cycles * iterations_per_cycle) + "\n");
-          ns.write_energy_file(energy_file, header);
-          ns.write_transitions_file(transitions_file, header);
-          last_checkup = time(NULL);
-        }
+        // write energy and transition data files
+        const string header = (file_header +
+                               "# initialization iterations: " +
+                               to_string(cycles * iterations_per_cycle) + "\n");
+        ns.write_energy_file(energy_file, header);
+        ns.write_transitions_file(transitions_file, header);
 
         // loop until we satisfy the end condition for initialization
       } while (sample_error > target_sample_error);
 
-      cout << endl;
-
       ns.compute_weights_from_dos(beta_cap);
-
-      const string header = file_header +
-        ("# initialization iterations: "
-         + to_string(cycles * iterations_per_cycle) + "\n");
-      ns.write_transitions_file(transitions_file, header);
-      ns.write_weights_file(weights_file, header);
 
     } else { // the weights file already exists, so read it in
 
@@ -461,6 +448,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     } // complete determination of weights for an all temperature simulation
 
   } // complete initialization
+  cout << endl;
 
   if (debug) {
     ns.print_energy_data();
@@ -477,7 +465,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   // -------------------------------------------------------------------------------------
 
   cout << "starting simulation" << endl << endl;
-  last_checkup = time(NULL);
+  clock_t last_data_print_time = time(NULL); // keep time to periodically write data files
 
   int new_energy; // energy of the state we move into
   int old_energy = ns.energy(); // energy of the last state
@@ -518,21 +506,21 @@ int main(const int arg_num, const char *arg_vec[]) {
     old_energy = new_energy;
 
     // if enough time has passed, write data files
-    if ( difftime(time(NULL), last_checkup) > print_time * 60 ) {
+    if ( difftime(time(NULL), last_data_print_time) > print_time * 60 ) {
       cout << "iterations: " << ii << endl;
-      const string header = file_header + "# iterations: " + to_string(ii) + "\n";
+      const string header = (file_header +
+                             "# iterations: " + to_string((long long)ii) + "\n");
       ns.write_energy_file(energy_file, header);
       ns.write_distance_file(distance_file, header);
       cout << endl;
-      last_checkup = time(NULL);
+      last_data_print_time = time(NULL);
     }
   }
 
   // write final data files
   cout << "simulation complete" << endl;
   const string header = (file_header + "# iterations: "
-                         + to_string((long long)pow(10,log10_iterations))
-                         + "\n");
+                         + to_string((long long)pow(10,log10_iterations)) + "\n");
   ns.write_energy_file(energy_file, header);
   ns.write_distance_file(distance_file, header);
 
