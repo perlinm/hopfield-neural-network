@@ -447,6 +447,7 @@ int main(const int arg_num, const char *arg_vec[]) {
       } while (sample_error > target_sample_error);
 
       ns.compute_weights_from_dos(beta_cap);
+      ns.write_weights_file(weights_file, file_header);
 
     } else { // the weights file already exists, so read it in
 
