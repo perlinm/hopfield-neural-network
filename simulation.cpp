@@ -79,11 +79,14 @@ int main(const int arg_num, const char *arg_vec[]) {
      "number of minutes between intermediate data file dumps")
     ;
 
+  bool only_init;
   double target_sample_error;
 
   po::options_description all_temps_options("All temperature simulation options",
                                             help_text_length);
   all_temps_options.add_options()
+    ("only_init", po::value<bool>(&only_init)->default_value(false)->implicit_value(true),
+     "quit after initialization")
     ("sample_error", po::value<double>(&target_sample_error)->default_value(0.01,"0.01"),
      "the initialization routine terminates when it achieves this"
      " expected fractional sample error at an inverse temperature beta_cap")
@@ -454,13 +457,16 @@ int main(const int arg_num, const char *arg_vec[]) {
   } // complete initialization
   cout << endl;
 
-  const int init_time = difftime(time(NULL), simulation_start_time);
-  cout << "initialization time: " << time_string(init_time) << endl << endl;
-
   if (!suppress) {
     ns.print_energy_data();
     cout << endl;
   }
+
+  const int init_time = difftime(time(NULL), simulation_start_time);
+  cout << "initialization time: " << time_string(init_time) << endl << endl;
+
+  // if we only wanted to initialize, then we can exit now
+  if (only_init) return 0;
 
   // initialize a new random state and clear the histograms
   generator.seed(seed+1);
