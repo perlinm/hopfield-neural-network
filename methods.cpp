@@ -16,7 +16,7 @@ string time_string(const int total_seconds) {
   const int days = total_seconds / (60 * 60 * 24);
   return (to_string(days) + "d "
           + to_string(hours) + "h "
-          + to_string(minutes) + "d "
+          + to_string(minutes) + "m "
           + to_string(seconds) + "s");
 }
 
