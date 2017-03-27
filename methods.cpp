@@ -135,7 +135,8 @@ void hopfield_network::print_couplings() const {
 
 // network simulation constructor
 network_simulation::network_simulation(const vector<vector<bool>>& patterns,
-                                       const vector<bool>& initial_state) :
+                                       const vector<bool>& initial_state,
+                                       const bool initialize_state_histograms) :
   patterns(patterns),
   pattern_number(patterns.size()),
   network(hopfield_network(patterns)),
@@ -144,7 +145,7 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
 {
   entropy_peak = energy_range / 2; // an initial guess
   state = initial_state;
-  initialize_histograms();
+  initialize_histograms(initialize_state_histograms);
   ln_weights = vector<double>(energy_range, 0);
   ln_dos = vector<double>(energy_range, 0);
 };
@@ -188,8 +189,9 @@ double network_simulation::transition_matrix(const int final_energy,
 // Methods used in simulation
 // ---------------------------------------------------------------------------------------
 
-// initialize all tables: distance log, sample histogram, energy transitions
-void network_simulation::initialize_histograms() {
+// initialize all tables: distance log, sample histogram, energy transitions,
+//   and maybe the distance histogram
+void network_simulation::initialize_histograms(const bool initialize_state_histograms) {
   energy_histogram = vector<long>(energy_range, 0);
   distance_records = vector<long>(energy_range, 0);
 
@@ -201,6 +203,14 @@ void network_simulation::initialize_histograms() {
   for (int ee = 0; ee < energy_range; ee++) {
     distance_logs[ee] = vector<long>(pattern_number, 0);
     transition_histogram[ee] = vector<long>(2*max_de + 1, 0);
+  }
+
+  if (initialize_state_histograms) {
+    state_records = vector<long>(energy_range, 0);
+    state_histograms = vector<vector<long>>(energy_range);
+    for (int ee = 0; ee < energy_range; ee++) {
+      state_histograms[ee] = vector<long>(network.nodes, 0);
+    }
   }
 }
 
@@ -216,6 +226,14 @@ void network_simulation::update_distance_logs(const int energy) {
     // add distance from pattern[pp] to the distance histogram
     distance_logs[energy][pp] += distance;
   }
+  distance_records[energy]++;
+}
+
+void network_simulation::update_state_histograms(const int energy) {
+  for (int ii = 0; ii < network.nodes; ii++) {
+    state_histograms[energy][ii] += state[ii];
+  }
+  state_records[energy]++;
 }
 
 void network_simulation::update_sample_histogram(const int new_energy,
@@ -515,15 +533,30 @@ void network_simulation::write_distance_file(const string distance_file,
   distance_stream << file_header << endl
                   << "# energy, distance records, distance log..." << endl;
   for (int ee = 0; ee < energy_range; ee++) {
-    if (energy_histogram[ee] == 0)  continue;
-    distance_stream << network.actual_energy(ee)
-                    << " " << distance_records[ee];
+    if (distance_records[ee] == 0)  continue;
+    distance_stream << network.actual_energy(ee) << " " << distance_records[ee];
     for (int pp = 0; pp < pattern_number; pp++) {
       distance_stream << " " << distance_logs[ee][pp];
     }
     distance_stream << endl;
   }
   distance_stream.close();
+}
+
+void network_simulation::write_state_file(const string state_file,
+                                          const string file_header) const {
+  ofstream state_stream(state_file);
+  state_stream << file_header << endl
+                  << "# energy, state records, state histogram..." << endl;
+  for (int ee = 0; ee < energy_range; ee++) {
+    if (state_records[ee] == 0)  continue;
+    state_stream << network.actual_energy(ee) << " " << state_records[ee];
+    for (int ii = 0; ii < network.nodes; ii++) {
+      state_stream << " " << state_histograms[ee][ii];
+    }
+    state_stream << endl;
+  }
+  state_stream.close();
 }
 
 void network_simulation::read_transitions_file(const string transitions_file) {
@@ -683,7 +716,7 @@ void network_simulation::print_energy_data() const {
          << setw(sample_width) << sample_histogram[ee] << " "
          << setw(double_dec + 3) << setprecision(double_dec)
          << log10(exp(1)) * ln_dos[ee] << " "
-         << setw(double_dec + 2) << setprecision(double_dec)
+         << setw(double_dec + 3) << setprecision(double_dec)
          << log10(exp(1)) * ln_weights[ee] << endl;
   }
 }
@@ -692,9 +725,9 @@ void network_simulation::print_energy_data() const {
 void network_simulation::print_distances() const {
   cout << "energy <d_1>, <d_2>, ..., <d_p>" << endl;
   const int energy_width = log10(network.max_energy) + 2;
-  const int distance_dec = 6;
+  const int distance_dec = 6; // decimal precision of expected distance values
   for (int ee = energy_range - 1; ee >= 0; ee--) {
-    // check that we have sampled this energy
+    // check that we have sampled distances this energy
     const long observations = distance_records[ee];
     if (observations == 0) continue;
 
@@ -702,7 +735,29 @@ void network_simulation::print_distances() const {
     for (int pp = 0; pp < pattern_number; pp++) {
       const double val = double(distance_logs[ee][pp]) / observations;
       const int prec = distance_dec - int(max(log10(val),0.));
-      cout << " " << setw(distance_dec) << setprecision(prec) << val * 2 / network.nodes;
+      cout << " " << setw(distance_dec + 2) << setprecision(prec)
+           << val * 2 / network.nodes;
+    }
+    cout << endl;
+  }
+}
+
+// print expectation value of each state at each energy
+void network_simulation::print_states() const {
+  cout << "energy <s_1>, <s_2>, ..., <s_n>" << endl;
+  const int energy_width = log10(network.max_energy) + 2;
+  const int state_dec = 6; // decimal precision of expected state values
+  for (int ee = energy_range - 1; ee >= 0; ee--) {
+    // check that we have sampled states this energy
+    const long observations = state_records[ee];
+    if (observations == 0) continue;
+
+    cout << setw(energy_width) << network.actual_energy(ee);
+    for (int ii = 0; ii < network.nodes; ii++) {
+      const double val = double(state_histograms[ee][ii]) / observations;
+      const int prec = state_dec - int(max(log10(val),0.));
+      cout << " " << setw(state_dec + 3)
+           << setprecision(prec) << val * 2 - 1;
     }
     cout << endl;
   }

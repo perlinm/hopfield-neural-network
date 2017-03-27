@@ -226,7 +226,9 @@ int main(const int arg_num, const char *arg_vec[]) {
       }
     }
     bo::hash_combine(running_hash, input_beta_cap);
-    bo::hash_combine(running_hash, target_sample_error);
+    if (!fixed_temp) {
+      bo::hash_combine(running_hash, target_sample_error);
+    }
     return running_hash;
   }();
 
@@ -253,10 +255,12 @@ int main(const int arg_num, const char *arg_vec[]) {
     = (fs::path(data_dir) / fs::path("energies" + file_suffix)).string();
   const string distance_file
     = (fs::path(data_dir) / fs::path("distances" + file_suffix)).string();
+  const string state_file
+    = (fs::path(data_dir) / fs::path("states" + file_suffix)).string();
 
   // construct network simulation object with a random initial state
   generator.seed(seed);
-  network_simulation ns(patterns, random_state(nodes, rnd, generator));
+  network_simulation ns(patterns, random_state(nodes, rnd, generator), fixed_temp);
 
   // header for all data files
   stringstream file_header_stream;
@@ -472,7 +476,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   // initialize a new random state and clear the histograms
   generator.seed(seed+1);
   ns.state = random_state(nodes, rnd, generator);
-  ns.initialize_histograms();
+  ns.initialize_histograms(fixed_temp);
 
   // -------------------------------------------------------------------------------------
   // Run simulation
@@ -512,8 +516,12 @@ int main(const int arg_num, const char *arg_vec[]) {
     //   otherwise we will be asymptotically spending all of simulation
     //   time on these updates
     if (ii % (ns.network.nodes * ns.pattern_number) == 0) {
-      ns.distance_records[new_energy]++;
       ns.update_distance_logs(new_energy);
+    }
+    if (fixed_temp) {
+      if (ii % ns.network.nodes == 0) {
+        ns.update_state_histograms(new_energy);
+      }
     }
 
     // update the old energy
@@ -537,13 +545,21 @@ int main(const int arg_num, const char *arg_vec[]) {
                          + to_string((long)pow(10,log10_iterations)) + "\n");
   ns.write_energy_file(energy_file, header);
   ns.write_distance_file(distance_file, header);
+  if (fixed_temp) {
+    ns.write_state_file(state_file, header);
+  }
 
   if (!suppress) {
+    ns.compute_dos_from_energy_histogram();
     cout << endl;
     ns.print_energy_data();
     cout << endl;
     ns.print_distances();
     cout << endl;
+    if (fixed_temp) {
+      ns.print_states();
+      cout << endl;
+    }
   }
 
   const int total_time = difftime(time(NULL), simulation_start_time);

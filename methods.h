@@ -73,12 +73,21 @@ struct network_simulation {
 
   // stores the sum of all distances from every pattern at each energy
   // indexed by (energy, pattern)
-  // dividing distance_logs[ee][pp] by energy_histogram[ee] tells us
+  // dividing distance_logs[ee][pp] by distance_records[ee] tells us
   //   the mean distance from pattern pp at the energy ee
   vector<vector<long>> distance_logs;
 
   // number of times we have recorded distance at a given energy
   vector<long> distance_records;
+
+  // stores the number of times we have seen each node in the state 1
+  // indexed by (energy, node)
+  // dividing state_histograms[ee][nn] by state_records[ee] tells us the
+  //   mean state of node nn at the energy ee
+  vector<vector<long>> state_histograms;
+
+  // number of times we have recorded states at a given energy
+  vector<long> state_records;
 
   // stores the number times we have proposed a move
   //   from a given energy with a specified energy difference
@@ -103,7 +112,8 @@ struct network_simulation {
 
   // constructor for the network simulation object
   network_simulation(const vector<vector<bool>>& patterns,
-                     const vector<bool>& initial_state);
+                     const vector<bool>& initial_state,
+                     const bool initialize_state_histograms);
 
   // -------------------------------------------------------------------------------------
   // Access methods for histograms and matrices
@@ -129,10 +139,12 @@ struct network_simulation {
   int energy() const { return energy(state); };
 
   // initialize all tables: distance log, sample histogram, energy transitions
-  void initialize_histograms();
+  //   and maybe the distance histogram
+  void initialize_histograms(const bool initialize_state_histograms);
 
   // update histograms with an observation
   void update_distance_logs(const int energy);
+  void update_state_histograms(const int energy);
   void update_sample_histogram(const int new_energy, const int old_energy);
   void update_transition_histogram(const int energy, const int energy_change);
 
@@ -159,6 +171,7 @@ struct network_simulation {
   void write_weights_file(const string weights_file, const string file_header) const;
   void write_energy_file(const string energy_file, const string file_header) const;
   void write_distance_file(const string distance_file, const string file_header) const;
+  void write_state_file(const string state_file, const string file_header) const;
 
   void read_transitions_file(const string transitions_file);
   void read_weights_file(const string weights_file);
@@ -178,5 +191,8 @@ struct network_simulation {
 
   // print expectation value of distances from each pattern at each energy
   void print_distances() const;
+
+  // print expectation value of each state at each energy
+  void print_states() const;
 
 };
