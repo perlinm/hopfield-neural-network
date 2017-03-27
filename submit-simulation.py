@@ -23,26 +23,23 @@ sim_args = sys.argv[2:]
 simulate_cmd_list = [ "{}/{}".format(project_dir, simulate) ] + sim_args
 
 on_rc_server = ("colorado.edu" in socket.getfqdn())
-rc_modules = [ "gcc/5.1.0", "openmpi/1.8.5", "boost/1.61.0" ]
-rc_initialize = "module load " + " ".join(rc_modules)
+rc_modules = [ "gcc/5.1.0", "openmpi/1.8.5", "boost/1.61.0", "python/3.5.2" ]
+rc_initialization = "module load " + " ".join(rc_modules)
 
 # before proceeding further, build the project
 print("building project...")
-if on_rc_server: subprocess.call(rc_initialize, shell = True)
+if on_rc_server: subprocess.call(rc_initialization, shell = True)
 subprocess.call([mkfac])
 
 # determine simulation file basename
 suffix_cmd_list = simulate_cmd_list + [ "--suffix" ]
 suffix_cmd_result = subprocess.run(suffix_cmd_list, stdout = subprocess.PIPE)
 suffix = suffix_cmd_result.stdout.decode("utf-8").split()[-1]
-basename = "network" + ".".join(suffix.split(".")[:-1])
-job_file = "{}/{}.sh".format(job_dir,basename)
-out_file = "{}/{}.out".format(job_dir,basename)
-err_file = "{}/{}.err".format(job_dir,basename)
+basename = "{}/network{}".format(job_dir, ".".join(suffix.split(".")[:-1]))
 
 # set batch options
-options = [ [ "output", out_file ],
-            [ "error", err_file ],
+options = [ [ "output", basename + ".out" ],
+            [ "error", basename + ".err" ],
             [ "time", time ],
             [ "nodes", 1 ],
             [ "ntasks", 1 ],
@@ -54,9 +51,10 @@ job_text = "#!/usr/bin/env sh\n"
 for option in options:
     job_text += "#SBATCH --{} {}\n".format(option[0], option[1])
 job_text += "\n"
-if on_rc_server: job_text += rc_initialize + "\n"
+if on_rc_server: job_text += rc_initialization + "\n"
 job_text += " ".join(simulate_cmd_list) + "\n"
 
+job_file = basename + ".sh"
 if not os.path.isdir(job_dir):
     os.makedirs(job_dir)
 with open(job_file, "w") as f:
