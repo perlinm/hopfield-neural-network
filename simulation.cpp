@@ -534,7 +534,6 @@ int main(const int arg_num, const char *arg_vec[]) {
                              "# iterations: " + to_string((long)ii) + "\n");
       ns.write_energy_file(energy_file, header);
       ns.write_distance_file(distance_file, header);
-      cout << endl;
       last_data_print_time = time(NULL);
     }
   }
