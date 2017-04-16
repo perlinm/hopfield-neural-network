@@ -136,7 +136,7 @@ void hopfield_network::print_couplings() const {
 // network simulation constructor
 network_simulation::network_simulation(const vector<vector<bool>>& patterns,
                                        const vector<bool>& initial_state,
-                                       const bool initialize_state_histograms) :
+                                       const bool fixed_temp_simulation) :
   patterns(patterns),
   pattern_number(patterns.size()),
   network(hopfield_network(patterns)),
@@ -145,7 +145,7 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
 {
   entropy_peak = energy_range / 2; // an initial guess
   state = initial_state;
-  initialize_histograms(initialize_state_histograms);
+  initialize_histograms(fixed_temp_simulation);
   ln_weights = vector<double>(energy_range, 0);
   ln_dos = vector<double>(energy_range, 0);
 };
@@ -189,9 +189,8 @@ double network_simulation::transition_matrix(const int final_energy,
 // Methods used in simulation
 // ---------------------------------------------------------------------------------------
 
-// initialize all tables: distance log, sample histogram, energy transitions,
-//   and maybe the distance histogram
-void network_simulation::initialize_histograms(const bool initialize_state_histograms) {
+// initialize all tables and histograms
+void network_simulation::initialize_histograms(const bool fixed_temp_simulation) {
   energy_histogram = vector<long>(energy_range, 0);
   distance_records = vector<long>(energy_range, 0);
 
@@ -199,13 +198,16 @@ void network_simulation::initialize_histograms(const bool initialize_state_histo
   sample_histogram = vector<long>(energy_range, 0);
 
   distance_logs = vector<vector<long>>(energy_range);
-  transition_histogram = vector<vector<long>>(energy_range);
   for (int ee = 0; ee < energy_range; ee++) {
     distance_logs[ee] = vector<long>(pattern_number, 0);
-    transition_histogram[ee] = vector<long>(2*max_de + 1, 0);
   }
 
-  if (initialize_state_histograms) {
+  if (!fixed_temp_simulation) {
+    transition_histogram = vector<vector<long>>(energy_range);
+    for (int ee = 0; ee < energy_range; ee++) {
+      transition_histogram[ee] = vector<long>(2*max_de + 1, 0);
+    }
+  } else {
     state_records = vector<long>(energy_range, 0);
     state_histograms = vector<vector<long>>(energy_range);
     for (int ee = 0; ee < energy_range; ee++) {

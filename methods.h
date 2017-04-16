@@ -113,7 +113,7 @@ struct network_simulation {
   // constructor for the network simulation object
   network_simulation(const vector<vector<bool>>& patterns,
                      const vector<bool>& initial_state,
-                     const bool initialize_state_histograms);
+                     const bool fixed_temp_simulation);
 
   // -------------------------------------------------------------------------------------
   // Access methods for histograms and matrices
@@ -138,9 +138,8 @@ struct network_simulation {
   int energy(const vector<bool>& state) const { return network.energy(state); };
   int energy() const { return energy(state); };
 
-  // initialize all tables: distance log, sample histogram, energy transitions
-  //   and maybe the distance histogram
-  void initialize_histograms(const bool initialize_state_histograms);
+  // initialize all tables and histograms
+  void initialize_histograms(const bool fixed_temp_simulation);
 
   // update histograms with an observation
   void update_distance_logs(const int energy);
