@@ -185,7 +185,7 @@ if "2d" in sys.argv:
 
     figure("u_2d_fig")
     pcolor(p_borders/N, temp_borders, u_cv_s_d[0,:,:])
-    title("$U$")
+    title("$U/N$")
     xlabel("$P/N$")
     ylabel("$T$")
     colorbar()
@@ -194,7 +194,7 @@ if "2d" in sys.argv:
 
     figure("cv_2d_fig")
     pcolor(p_borders/N, temp_borders, u_cv_s_d[1,:,:])
-    title("$C_V$")
+    title("$C_V/N$")
     xlabel("$P/N$")
     ylabel("$T$")
     colorbar()
@@ -203,7 +203,7 @@ if "2d" in sys.argv:
 
     figure("s_2d_fig")
     pcolor(p_borders/N, temp_borders, u_cv_s_d[2,:,:])
-    title("$S$")
+    title("$S/N$")
     xlabel("$P/N$")
     ylabel("$T$")
     colorbar()
