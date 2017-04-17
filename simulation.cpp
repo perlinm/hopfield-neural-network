@@ -162,7 +162,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     return -1;
   }
 
-  // determine whether we are using a pattern file afterall
+  // determine whether we are using a pattern file after all
   const bool using_pattern_file = !pattern_file.empty();
 
   fs::create_directory(data_dir);
