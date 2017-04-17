@@ -42,7 +42,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     ;
 
   int nodes;
-  const int node_max = 500;
+  const int node_max = 1000;
   int pattern_number;
   string pattern_file;
 
@@ -72,7 +72,7 @@ int main(const int arg_num, const char *arg_vec[]) {
      " of interest in the simulation")
     ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
      "log10 of the number of iterations to simulate")
-    ("init_factor", po::value<int>(&init_factor)->default_value(4),
+    ("init_factor", po::value<int>(&init_factor)->default_value(1),
      "run for nodes * pattern_number * 10^(init_factor) iterations"
      " per initialization cycle")
     ("print_time", po::value<int>(&print_time)->default_value(30),
@@ -304,26 +304,9 @@ int main(const int arg_num, const char *arg_vec[]) {
   // initialize weight array
   if (fixed_temp) {
 
-    cout << "initializing a fixed temperature simulation" << endl;
-
-    // run for one initialization cycle in order to locate the entropy peak
-    for (long ii = 0; ii < iterations_per_cycle; ii++) {
-
-      // make a random move and update the energy histogram
-      ns.state = random_change(ns.state, rnd(generator));
-      ns.energy_histogram[ns.energy()]++;
-    }
-
-    // locate the entropy peak
+    // for a fixed temperature simulation, use boltzmann weights e^(-\beta E)
     for (int ee = 0; ee < ns.energy_range; ee++) {
-      if (ns.energy_histogram[ee] > ns.energy_histogram[ns.entropy_peak]) {
-        ns.entropy_peak = ee;
-      }
-    }
-
-    // for a fixed (or infinite) temperature simulation, use boltzmann weights
-    for (int ee = 0; ee < ns.energy_range; ee++) {
-      ns.ln_weights[ee] = -(ee-ns.entropy_peak) * beta_cap;
+      ns.ln_weights[ee] = -beta_cap * ee;
     }
 
   } else { // run an all temperature simulation
@@ -462,7 +445,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   } // complete initialization
   cout << endl;
 
-  if (!suppress) {
+  if (!suppress && !fixed_temp) {
     ns.print_energy_data();
     cout << endl;
   }
@@ -476,7 +459,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   // initialize a new random state and clear the histograms
   generator.seed(seed+1);
   ns.state = random_state(nodes, rnd, generator);
-  ns.initialize_histograms(fixed_temp);
+  ns.initialize_histograms();
 
   // -------------------------------------------------------------------------------------
   // Run simulation
@@ -508,7 +491,6 @@ int main(const int arg_num, const char *arg_vec[]) {
     }
     assert(new_energy < ns.energy_range);
 
-    // update energy and sample histograms
     ns.energy_histogram[new_energy]++;
     ns.update_sample_histogram(new_energy, old_energy);
 
@@ -518,10 +500,8 @@ int main(const int arg_num, const char *arg_vec[]) {
     if (ii % (ns.network.nodes * ns.pattern_number) == 0) {
       ns.update_distance_logs(new_energy);
     }
-    if (fixed_temp) {
-      if (ii % ns.network.nodes == 0) {
-        ns.update_state_histograms(new_energy);
-      }
+    if (ii % ns.network.nodes == 0) {
+      ns.update_state_histograms();
     }
 
     // update the old energy
@@ -544,18 +524,18 @@ int main(const int arg_num, const char *arg_vec[]) {
                          + to_string((long)pow(10,log10_iterations)) + "\n");
   ns.write_energy_file(energy_file, header);
   ns.write_distance_file(distance_file, header);
-  if (fixed_temp) {
-    ns.write_state_file(state_file, header);
-  }
+  ns.write_state_file(state_file, header);
 
   if (!suppress) {
-    ns.compute_dos_from_energy_histogram();
-    cout << endl;
-    ns.print_energy_data();
-    cout << endl;
+    if (!ns.fixed_temp) {
+      ns.compute_dos_from_energy_histogram();
+      cout << endl;
+      ns.print_energy_data();
+      cout << endl;
+    }
     ns.print_distances();
     cout << endl;
-    if (fixed_temp) {
+    if (ns.fixed_temp) {
       ns.print_states();
       cout << endl;
     }

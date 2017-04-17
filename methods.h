@@ -50,6 +50,9 @@ struct hopfield_network {
 // network simulation object
 struct network_simulation {
 
+  // is this a fixed temperature simulation?
+  bool fixed_temp;
+
   // patterns used to construct the network, and the number of them
   const vector<vector<bool>> patterns;
   const int pattern_number;
@@ -63,7 +66,7 @@ struct network_simulation {
 
   // the energy at which entropy is maximized
   // i.e. the most common energy in the space of all states
-  int entropy_peak;
+  int entropy_peak = 0;
 
   // the current network state stored in simulation
   vector<bool> state;
@@ -71,49 +74,57 @@ struct network_simulation {
   // histogram containing the number of times we have seen every energy
   vector<long> energy_histogram;
 
-  // stores the sum of all distances from every pattern at each energy
-  // indexed by (energy, pattern)
-  // dividing distance_logs[ee][pp] by distance_records[ee] tells us
-  //   the mean distance from pattern pp at the energy ee
-  vector<vector<long>> distance_logs;
-
-  // number of times we have recorded distance at a given energy
-  vector<long> distance_records;
-
-  // stores the number of times we have seen each node in the state 1
-  // indexed by (energy, node)
-  // dividing state_histograms[ee][nn] by state_records[ee] tells us the
-  //   mean state of node nn at the energy ee
-  vector<vector<long>> state_histograms;
-
-  // number of times we have recorded states at a given energy
-  vector<long> state_records;
-
-  // stores the number times we have proposed a move
-  //   from a given energy with a specified energy difference
-  // indexed by (energy, change in energy)
-  vector<vector<long>> transition_histogram;
-
-  // visit_log[ee] answers the question: have we visited the energy ee
-  // at least once since the last observation of a maximual entropy state?
-  vector<bool> visit_log;
-
-  // stores the number of independent samples of any energy
-  // two samples of a given energy are considered independent if
-  //   we have made a visit to the maximal entropy state between them
-  vector<long> sample_histogram;
-
   // logarithm of the weights which determine the probability
   //   of accepting a move between two energies during simulation
   vector<double> ln_weights;
 
   // logarithm of the (unnormalized) density of states
+  // note: only used in all temperature simulations
   vector<double> ln_dos;
+
+  // stores the number times we have proposed a move
+  //   from a given energy with a specified energy difference
+  // indexed by (energy, change in energy)
+  // note: only used in all temperature simulations
+  vector<vector<long>> transition_histogram;
+
+  // visit_log[ee] answers the question: have we visited the energy ee
+  // at least once since the last observation of a maximual entropy state?
+  // note: only used in all temperature simulations
+  vector<bool> visit_log;
+
+  // stores the number of independent samples of any energy
+  // two samples of a given energy are considered independent if
+  //   we have made a visit to the maximal entropy state between them
+  // note: only used in all temperature simulations
+  vector<long> sample_histogram;
+
+  // number of times we have updated the state histogram
+  long state_records = 0;
+
+  // stores the number of times we have seen each node in the state 1
+  // dividing state_histograms[nn] by state_records tells us the mean state of node nn
+  vector<long> state_histograms;
+
+  // number of times we have recorded distance from patterns
+  //   either at a given energy (all_temp_distance_records),
+  //   or just the total number (fixed_temp_distance_records)
+  vector<long> all_temp_distance_records;
+  long fixed_temp_distance_records = 0;
+
+  // stores the sum of all distances from every pattern at each energy
+  // indexed by (energy, pattern)
+  // dividing all_temp_distance_logs[ee][pp] by distance_records[ee] tells us
+  //   the mean distance from pattern pp at the energy ee
+  // dividing fixed_temp_distance_logs[pp] by distance_records tells us
+  //   the mean distance from pattern pp at the simulation temperature
+  vector<vector<long>> all_temp_distance_logs;
+  vector<long> fixed_temp_distance_logs;
 
   // constructor for the network simulation object
   network_simulation(const vector<vector<bool>>& patterns,
                      const vector<bool>& initial_state,
-                     const bool fixed_temp_simulation);
+                     const bool fixed_temp);
 
   // -------------------------------------------------------------------------------------
   // Access methods for histograms and matrices
@@ -139,11 +150,11 @@ struct network_simulation {
   int energy() const { return energy(state); };
 
   // initialize all tables and histograms
-  void initialize_histograms(const bool fixed_temp_simulation);
+  void initialize_histograms();
 
   // update histograms with an observation
   void update_distance_logs(const int energy);
-  void update_state_histograms(const int energy);
+  void update_state_histograms();
   void update_sample_histogram(const int new_energy, const int old_energy);
   void update_transition_histogram(const int energy, const int energy_change);
 
