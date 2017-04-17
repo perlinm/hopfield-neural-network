@@ -72,6 +72,9 @@ int main(const int arg_num, const char *arg_vec[]) {
      " of interest in the simulation")
     ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
      "log10 of the number of iterations to simulate")
+    ("init_factor", po::value<int>(&init_factor)->default_value(1),
+     "run for nodes * pattern_number * 10^(init_factor) iterations"
+     " per initialization cycle")
     ("print_time", po::value<int>(&print_time)->default_value(30),
      "number of minutes between intermediate data file dumps")
     ;
@@ -84,9 +87,6 @@ int main(const int arg_num, const char *arg_vec[]) {
   all_temps_options.add_options()
     ("only_init", po::value<bool>(&only_init)->default_value(false)->implicit_value(true),
      "quit after initialization")
-    ("init_factor", po::value<int>(&init_factor)->default_value(1),
-     "run for nodes * pattern_number * 10^(init_factor) iterations"
-     " per initialization cycle")
     ("sample_error", po::value<double>(&target_sample_error)->default_value(0.01,"0.01"),
      "the initialization routine terminates when it achieves this"
      " expected fractional sample error at an inverse temperature beta_cap")
@@ -304,9 +304,29 @@ int main(const int arg_num, const char *arg_vec[]) {
   // initialize weight array
   if (fixed_temp) {
 
-    // for a fixed temperature simulation, use boltzmann weights e^(-\beta E)
-    for (int ee = 0; ee < ns.energy_range; ee++) {
-      ns.ln_weights[ee] = -beta_cap * ee;
+    cout << "starting a fixed temperature initialization routine" << endl;
+
+    // initialize for some time in order to (approximately) equilibriate
+    int new_energy; // energy of the state we move into
+    int old_energy = ns.energy(); // energy of the last state
+    assert(old_energy < ns.energy_range);
+    for (long ii = 0; ii < iterations_per_cycle; ii++) {
+      // construct the state which we are proposing to move into,
+      //   and compute its energy
+      const vector<bool> proposed_state = random_change(ns.state, rnd(generator));
+      const int proposed_energy = ns.energy(proposed_state);
+
+      // if we pass a probability test, accept the move
+      if (rnd(generator) < ns.move_probability(proposed_energy, old_energy, beta_cap)) {
+        ns.state = proposed_state;
+        new_energy = proposed_energy;
+      } else {
+        new_energy = old_energy;
+      }
+      assert(new_energy < ns.energy_range);
+
+      // update the old energy
+      old_energy = new_energy;
     }
 
   } else { // run an all temperature simulation
@@ -360,9 +380,9 @@ int main(const int arg_num, const char *arg_vec[]) {
             // if the forward flux F_{i->f} of proposed moves from E_i to E_f is,
             //   say, twice the backwards flux F_{f->i}, then to sample E_i and E_f
             //   equally we should reject half of the proposed moves from E_i to E_f
-            // in general, the acceptance probability to sample E_i and E_f equally
+            // in general, the move probability necessary to sample E_i and E_f equally
             //   is F_{f->i} / F_{i->f}
-            const double acceptance_probability = [&]() -> double {
+            const double move_probability = [&]() -> double {
               // compute the (unnormalized) flux of proposed moves forward and backward
               //   between the current and proposed energies
               const long backward_moves = ns.transitions(proposed_energy, -energy_change);
@@ -393,7 +413,7 @@ int main(const int arg_num, const char *arg_vec[]) {
             }();
 
             // if we pass a probability test, accept the move
-            if (rnd(generator) < acceptance_probability) {
+            if (rnd(generator) < move_probability) {
               ns.state = proposed_state;
               new_energy = proposed_energy;
             } else {
@@ -442,24 +462,24 @@ int main(const int arg_num, const char *arg_vec[]) {
 
     } // complete determination of weights for an all temperature simulation
 
+    if (!suppress) {
+      ns.print_energy_data();
+      cout << endl;
+    }
+
+    // initialize a new random state and clear the histograms
+    generator.seed(seed+1);
+    ns.state = random_state(nodes, rnd, generator);
+    ns.initialize_histograms();
+
   } // complete initialization
   cout << endl;
-
-  if (!suppress && !fixed_temp) {
-    ns.print_energy_data();
-    cout << endl;
-  }
 
   const int init_time = difftime(time(NULL), simulation_start_time);
   cout << "initialization time: " << time_string(init_time) << endl << endl;
 
   // if we only wanted to initialize, then we can exit now
   if (only_init) return 0;
-
-  // initialize a new random state and clear the histograms
-  generator.seed(seed+1);
-  ns.state = random_state(nodes, rnd, generator);
-  ns.initialize_histograms();
 
   // -------------------------------------------------------------------------------------
   // Run simulation
@@ -478,12 +498,8 @@ int main(const int arg_num, const char *arg_vec[]) {
     const vector<bool> proposed_state = random_change(ns.state, rnd(generator));
     const int proposed_energy = ns.energy(proposed_state);
 
-    // determine the probability with which we will accept a move into the proposed state
-    const double acceptance_probability = exp(ns.ln_weights[proposed_energy]
-                                              - ns.ln_weights[old_energy]);
-
     // if we pass a probability test, accept the move
-    if (rnd(generator) < acceptance_probability) {
+    if (rnd(generator) < ns.move_probability(proposed_energy, old_energy, beta_cap)) {
       ns.state = proposed_state;
       new_energy = proposed_energy;
     } else {

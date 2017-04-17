@@ -147,7 +147,9 @@ network_simulation::network_simulation(const vector<vector<bool>>& patterns,
   entropy_peak = energy_range / 2; // an initial guess
   state = initial_state;
   initialize_histograms();
-  ln_weights = vector<double>(energy_range, 0);
+  if (!fixed_temp) {
+    ln_weights = vector<double>(energy_range, 0);
+  }
 };
 
 // ---------------------------------------------------------------------------------------
@@ -188,6 +190,17 @@ double network_simulation::transition_matrix(const int final_energy,
 // ---------------------------------------------------------------------------------------
 // Methods used in simulation
 // ---------------------------------------------------------------------------------------
+
+// probability to accept a move
+double network_simulation::move_probability(const int proposed_energy,
+                                            const int old_energy,
+                                            const int beta_cap) {
+  if (!fixed_temp) {
+    return exp(ln_weights[proposed_energy] - ln_weights[old_energy]);
+  } else {
+    return exp(-beta_cap * (proposed_energy - old_energy));
+  }
+}
 
 // initialize all tables and histograms
 void network_simulation::initialize_histograms() {
@@ -359,6 +372,7 @@ void network_simulation::compute_dos_from_transitions() {
 
 // compute density of states from the energy histogram
 void network_simulation::compute_dos_from_energy_histogram() {
+  if (fixed_temp) return;
   // keep track of the maximal value of ln_dos
   double max_ln_dos = 0;
   for (int ee = 0; ee < energy_range; ee++) {
@@ -375,7 +389,7 @@ void network_simulation::compute_dos_from_energy_histogram() {
 // construct weight array from the density of states
 // WARNING: assumes that the density of states is up to date
 void network_simulation::compute_weights_from_dos(const double beta_cap) {
-
+  if (fixed_temp) return;
   // reset the weight array
   ln_weights = vector<double>(energy_range, 0);
 
@@ -513,6 +527,7 @@ void network_simulation::write_transitions_file(const string transitions_file,
 
 void network_simulation::write_weights_file(const string weights_file,
                                             const string file_header) const {
+  if (fixed_temp) return;
   ofstream weight_stream(weights_file);
   weight_stream << file_header << endl
                 << "# energy, ln_weight" << endl;
@@ -598,6 +613,7 @@ void network_simulation::read_transitions_file(const string transitions_file) {
 }
 
 void network_simulation::read_weights_file(const string weights_file) {
+  if (fixed_temp) return;
   // keep track of first and last zeroes in ln_weights
   bool first_zero_set = false;
   int first_zero, last_zero;

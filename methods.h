@@ -76,6 +76,7 @@ struct network_simulation {
 
   // logarithm of the weights which determine the probability
   //   of accepting a move between two energies during simulation
+  // note: only used in all temperature simulations
   vector<double> ln_weights;
 
   // logarithm of the (unnormalized) density of states
@@ -148,6 +149,9 @@ struct network_simulation {
   // the energy of a given state
   int energy(const vector<bool>& state) const { return network.energy(state); };
   int energy() const { return energy(state); };
+
+  // probability to accept a move
+  double move_probability(const int new_energy, const int old_energy, const int beta_cap);
 
   // initialize all tables and histograms
   void initialize_histograms();
