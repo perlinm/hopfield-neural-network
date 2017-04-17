@@ -72,9 +72,6 @@ int main(const int arg_num, const char *arg_vec[]) {
      " of interest in the simulation")
     ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
      "log10 of the number of iterations to simulate")
-    ("init_factor", po::value<int>(&init_factor)->default_value(1),
-     "run for nodes * pattern_number * 10^(init_factor) iterations"
-     " per initialization cycle")
     ("print_time", po::value<int>(&print_time)->default_value(30),
      "number of minutes between intermediate data file dumps")
     ;
@@ -87,6 +84,9 @@ int main(const int arg_num, const char *arg_vec[]) {
   all_temps_options.add_options()
     ("only_init", po::value<bool>(&only_init)->default_value(false)->implicit_value(true),
      "quit after initialization")
+    ("init_factor", po::value<int>(&init_factor)->default_value(1),
+     "run for nodes * pattern_number * 10^(init_factor) iterations"
+     " per initialization cycle")
     ("sample_error", po::value<double>(&target_sample_error)->default_value(0.01,"0.01"),
      "the initialization routine terminates when it achieves this"
      " expected fractional sample error at an inverse temperature beta_cap")
