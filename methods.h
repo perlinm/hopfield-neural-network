@@ -13,9 +13,6 @@ int gcd(const int a, const int b);
 vector<bool> random_state(const int nodes, uniform_real_distribution<double>& rnd,
                           mt19937_64& generator);
 
-// make a random change to a given state using a random number on [0,1)
-vector<bool> random_change(const vector<bool>& state, const double random);
-
 struct hopfield_network {
 
   // number of nodes in network
@@ -146,13 +143,16 @@ struct network_simulation {
   // Methods used in simulation
   // -------------------------------------------------------------------------------------
 
+  // compute energy change due to flipping a node from its current state
+  int node_flip_energy_change(const int node) const;
+
   // the energy of a given state
   int energy(const vector<bool>& state) const { return network.energy(state); };
   int energy() const { return energy(state); };
 
   // probability to accept a move
-  double move_probability(const int new_energy, const int old_energy,
-                          const double beta_cap);
+  double move_probability(const int current_energy, const int energy_change,
+                          const double beta);
 
   // initialize all tables and histograms
   void initialize_histograms();

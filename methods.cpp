@@ -36,16 +36,6 @@ vector<bool> random_state(const int nodes, uniform_real_distribution<double>& rn
   return state;
 }
 
-// make a random change to a given state using a random number on [0,1)
-vector<bool> random_change(const vector<bool>& state, const double random) {
-  // pick a node determined by the random number,
-  // and construct a new state in which that node is flipped
-  const int node = floor(random*state.size());
-  vector<bool> new_state = state;
-  new_state[node] = !new_state[node];
-  return new_state;
-}
-
 // hopfield network constructor
 hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
   // number of nodes in network
@@ -59,8 +49,7 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
     for (int jj = 0; jj < nodes; jj++) {
       if (jj == ii) continue;
       for (int pp = 0, size = patterns.size(); pp < size; pp++) {
-        const int pattern_contribution = (2*patterns[pp][ii]-1)*(2*patterns[pp][jj]-1);
-        couplings[ii][jj] += pattern_contribution;
+        couplings[ii][jj] += 2 * !(patterns[pp][ii] ^ patterns[pp][jj]) - 1;
       }
     }
   }
@@ -98,8 +87,9 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
 int hopfield_network::energy(const vector<bool>& state) const {
   int energy = 0;
   for (int ii = 0; ii < nodes; ii++) {
+    const bool node_state = state[ii];
     for (int jj = ii + 1; jj < nodes; jj++) {
-      energy -= couplings[ii][jj] * (2*state[ii]-1) * (2*state[jj]-1);
+      energy -= couplings[ii][jj] * (2 * !(node_state ^ state[jj]) - 1);
     }
   }
   return (energy + max_energy) / energy_scale;
@@ -191,14 +181,24 @@ double network_simulation::transition_matrix(const int final_energy,
 // Methods used in simulation
 // ---------------------------------------------------------------------------------------
 
+// compute energy change due to flipping a node from its current state
+int network_simulation::node_flip_energy_change(const int node) const {
+  const bool node_state = state[node];
+  int node_energy = 0;
+  for (int ii = 0; ii < network.nodes; ii++) {
+    node_energy -= network.couplings[node][ii] * (2 * !(node_state ^ state[ii]) - 1);
+  }
+  return - 2 * node_energy / network.energy_scale;
+}
+
 // probability to accept a move
-double network_simulation::move_probability(const int proposed_energy,
-                                            const int old_energy,
-                                            const double beta_cap) {
+double network_simulation::move_probability(const int current_energy,
+                                            const int energy_change,
+                                            const double beta) {
   if (!fixed_temp) {
-    return exp(ln_weights[proposed_energy] - ln_weights[old_energy]);
+    return exp(ln_weights[current_energy + energy_change] - ln_weights[current_energy]);
   } else {
-    return exp(-beta_cap * (proposed_energy - old_energy));
+    return exp(-beta*energy_change);
   }
 }
 

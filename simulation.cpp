@@ -307,26 +307,22 @@ int main(const int arg_num, const char *arg_vec[]) {
     cout << "starting a fixed temperature initialization routine" << endl;
 
     // initialize for some time in order to (approximately) equilibriate
-    int new_energy; // energy of the state we move into
-    int old_energy = ns.energy(); // energy of the last state
-    assert(old_energy < ns.energy_range);
+    int current_energy = ns.energy(); // energy of the last state
+    assert(current_energy < ns.energy_range);
     for (long ii = 0; ii < iterations_per_cycle; ii++) {
-      // construct the state which we are proposing to move into,
-      //   and compute its energy
-      const vector<bool> proposed_state = random_change(ns.state, rnd(generator));
-      const int proposed_energy = ns.energy(proposed_state);
+
+      // pick a random node to maybe flip,
+      //   and compute the energy associated with its current state
+      const int node = floor(rnd(generator) * ns.network.nodes);
+      const int energy_change = ns.node_flip_energy_change(node);
 
       // if we pass a probability test, accept the move
-      if (rnd(generator) < ns.move_probability(proposed_energy, old_energy, beta_cap)) {
-        ns.state = proposed_state;
-        new_energy = proposed_energy;
-      } else {
-        new_energy = old_energy;
+      if (rnd(generator) < ns.move_probability(current_energy, energy_change, beta_cap)) {
+        ns.state[node] = !ns.state[node];
+        current_energy += energy_change;
       }
-      assert(new_energy < ns.energy_range);
+      assert(current_energy < ns.energy_range);
 
-      // update the old energy
-      old_energy = new_energy;
     }
 
   } else { // run an all temperature simulation
@@ -350,27 +346,26 @@ int main(const int arg_num, const char *arg_vec[]) {
       double sample_error;
 
       int new_energy; // energy of the state we move into
-      int old_energy = ns.energy(); // energy of the last state
-      assert(old_energy < ns.energy_range);
+      int current_energy = ns.energy(); // energy of the last state
+      assert(current_energy < ns.energy_range);
       do {
         for (long ii = 0; ii < iterations_per_cycle; ii++) {
 
-          // construct the state which we are proposing to move into
-          const vector<bool> proposed_state = random_change(ns.state, rnd(generator));
-
-          // energy of the proposed state, and the energy change for the proposed move
-          const int proposed_energy = ns.energy(proposed_state);
-          const int energy_change = proposed_energy - old_energy;
+          // pick a random node to maybe flip,
+          //   and compute the energy associated with its current state
+          const int node = floor(rnd(generator) * ns.network.nodes);
+          const int energy_change = ns.node_flip_energy_change(node);
+          const int proposed_energy = current_energy + energy_change;
           assert(abs(energy_change) <= ns.max_de);
 
           // this update should happen regardless of whether we make the move
-          ns.update_transition_histogram(old_energy, energy_change);
+          ns.update_transition_histogram(current_energy, energy_change);
 
           if ((beta_cap > 0 && energy_change <= 0)
               || (beta_cap < 0 && energy_change >= 0)) {
             // always accept moves to a lower energy in a positive temperature simulation,
             //   and "" higher energy "" negative temperature ""
-            ns.state = proposed_state;
+            ns.state[node] = !ns.state[node];
             new_energy = proposed_energy;
 
           } else { // accept the moves to higher energy states with some probability
@@ -388,11 +383,11 @@ int main(const int arg_num, const char *arg_vec[]) {
               const long backward_moves = ns.transitions(proposed_energy, -energy_change);
               // if we've never made the transition f->i, accept this move
               if (backward_moves == 0) return 1;
-              const long forward_moves = ns.transitions(old_energy, energy_change);
+              const long forward_moves = ns.transitions(current_energy, energy_change);
 
               // normalization factor for transition fluxes from both energies
               const long backward_norm = ns.transitions_from(proposed_energy);
-              const long forward_norm = ns.transitions_from(old_energy);
+              const long forward_norm = ns.transitions_from(current_energy);
 
               // compute the flux ratio F_{f->i} / F_{i->f}
               const double flux_ratio = (double(backward_moves * forward_norm)
@@ -414,11 +409,11 @@ int main(const int arg_num, const char *arg_vec[]) {
 
             // if we pass a probability test, accept the move
             if (rnd(generator) < move_probability) {
-              ns.state = proposed_state;
+              ns.state[node] = !ns.state[node];
               new_energy = proposed_energy;
             } else {
               // otherwise reject it
-              new_energy = old_energy;
+              new_energy = current_energy;
             }
           }
 
@@ -427,10 +422,10 @@ int main(const int arg_num, const char *arg_vec[]) {
           // update the energy and sample histograms
           // we don't care about other histograms during initialization
           ns.energy_histogram[new_energy]++;
-          ns.update_sample_histogram(new_energy, old_energy);
+          ns.update_sample_histogram(new_energy, current_energy);
 
           // as we move on with our lives (and this loop) the new energy turns old
-          old_energy = new_energy;
+          current_energy = new_energy;
         }
 
         // increment the cycle count and compute the density of states
@@ -489,39 +484,37 @@ int main(const int arg_num, const char *arg_vec[]) {
   clock_t last_data_print_time = time(NULL); // keep time to periodically write data files
 
   int new_energy; // energy of the state we move into
-  int old_energy = ns.energy(); // energy of the last state
-  assert(old_energy < ns.energy_range);
+  int current_energy = ns.energy(); // energy of the last state
+  assert(current_energy < ns.energy_range);
   for (long ii = 0; ii < pow(10,log10_iterations); ii++) {
 
-    // construct the state which we are proposing to move into,
-    //   and compute its energy
-    const vector<bool> proposed_state = random_change(ns.state, rnd(generator));
-    const int proposed_energy = ns.energy(proposed_state);
+    // pick a random node to maybe flip,
+    //   and compute the energy associated with its current state
+    const int node = floor(rnd(generator) * ns.network.nodes);
+    const int energy_change = ns.node_flip_energy_change(node);
 
     // if we pass a probability test, accept the move
-    if (rnd(generator) < ns.move_probability(proposed_energy, old_energy, beta_cap)) {
-      ns.state = proposed_state;
-      new_energy = proposed_energy;
+    if (rnd(generator) < ns.move_probability(current_energy, energy_change, beta_cap)) {
+      ns.state[node] = !ns.state[node];
+      new_energy = current_energy + energy_change;
     } else {
-      new_energy = old_energy;
+      new_energy = current_energy;
     }
     assert(new_energy < ns.energy_range);
 
     ns.energy_histogram[new_energy]++;
-    ns.update_sample_histogram(new_energy, old_energy);
+    ns.update_sample_histogram(new_energy, current_energy);
 
-    // update histograms which take O(X) time to update every X moves;
-    //   otherwise we will be asymptotically spending all of simulation
-    //   time on these updates
-    if (ii % (ns.network.nodes * ns.pattern_number) == 0) {
-      ns.update_distance_logs(new_energy);
-    }
+
+    // update distance logs and state histograms only every N moves to avoid correlations
+    //   between different records
     if (ii % ns.network.nodes == 0) {
+      ns.update_distance_logs(new_energy);
       ns.update_state_histograms();
     }
 
     // update the old energy
-    old_energy = new_energy;
+    current_energy = new_energy;
 
     // if enough time has passed, write data files
     if ( difftime(time(NULL), last_data_print_time) > print_time * 60 ) {
