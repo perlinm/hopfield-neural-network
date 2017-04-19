@@ -34,10 +34,10 @@ for energy_file in energy_files:
     distance_matches = [ distance_file for distance_file in distance_files
                          if distance_file.split("-")[1:] == energy_file.split("-")[1:] ]
     if len(weight_matches) != 1:
-        # print("problem matching weight file:", energy_file)
+        print("problem matching weight file:", energy_file)
         continue
     if len(distance_matches) != 1:
-        # print("problem matching distance file:", energy_file)
+        print("problem matching distance file:", energy_file)
         continue
     weight_file = weight_matches[0]
     distance_file = distance_matches[0]
@@ -140,28 +140,28 @@ if "1d" in sys.argv:
     ylabel("$U/N$")
     legend(loc="best")
     tight_layout()
-    savefig("u_convergence.pdf")
+    savefig("u-convergence.pdf")
 
     figure("cv_fig")
     xlabel("$T$")
     ylabel("$C_V/N$")
     legend(loc="best")
     tight_layout()
-    savefig("cv_convergence.pdf")
+    savefig("cv-convergence.pdf")
 
     figure("s_fig")
     xlabel("$T$")
     ylabel("$S/N$")
     legend(loc="best")
     tight_layout()
-    savefig("s_convergence.pdf")
+    savefig("s-convergence.pdf")
 
     figure("d_fig")
     xlabel("$T$")
     ylabel("$D/N$")
     legend(loc="best")
     tight_layout()
-    savefig("d_convergence.pdf")
+    savefig("d-convergence.pdf")
 
 ######### 2D plots ##########
 
@@ -190,7 +190,7 @@ if "2d" in sys.argv:
     ylabel("$T$")
     colorbar()
     tight_layout()
-    savefig("u_color.pdf")
+    savefig("u-color.pdf")
 
     figure("cv_2d_fig")
     pcolor(p_borders/N, temp_borders, u_cv_s_d[1,:,:])
@@ -199,7 +199,7 @@ if "2d" in sys.argv:
     ylabel("$T$")
     colorbar()
     tight_layout()
-    savefig("cv_color.pdf")
+    savefig("cv-color.pdf")
 
     figure("s_2d_fig")
     pcolor(p_borders/N, temp_borders, u_cv_s_d[2,:,:])
@@ -208,7 +208,7 @@ if "2d" in sys.argv:
     ylabel("$T$")
     colorbar()
     tight_layout()
-    savefig("s_color.pdf")
+    savefig("s-color.pdf")
 
     figure("d_2d_fig")
     pcolor(p_borders/N, temp_borders, u_cv_s_d[3,:,:])
@@ -217,7 +217,7 @@ if "2d" in sys.argv:
     ylabel("$T$")
     colorbar()
     tight_layout()
-    savefig("d_color.pdf")
+    savefig("d-color.pdf")
 
 if "show" in sys.argv:
     show()
