@@ -194,7 +194,7 @@ double network_simulation::transition_matrix(const int final_energy,
 // probability to accept a move
 double network_simulation::move_probability(const int proposed_energy,
                                             const int old_energy,
-                                            const int beta_cap) {
+                                            const double beta_cap) {
   if (!fixed_temp) {
     return exp(ln_weights[proposed_energy] - ln_weights[old_energy]);
   } else {

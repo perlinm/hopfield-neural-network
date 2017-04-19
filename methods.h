@@ -151,7 +151,8 @@ struct network_simulation {
   int energy() const { return energy(state); };
 
   // probability to accept a move
-  double move_probability(const int new_energy, const int old_energy, const int beta_cap);
+  double move_probability(const int new_energy, const int old_energy,
+                          const double beta_cap);
 
   // initialize all tables and histograms
   void initialize_histograms();
