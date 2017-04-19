@@ -472,11 +472,11 @@ int main(const int arg_num, const char *arg_vec[]) {
     ns.state = random_state(nodes, rnd, generator);
     ns.initialize_histograms();
 
+    const int init_time = difftime(time(NULL), simulation_start_time);
+    cout << "initialization time: " << time_string(init_time) << endl;
+
   } // complete initialization
   cout << endl;
-
-  const int init_time = difftime(time(NULL), simulation_start_time);
-  cout << "initialization time: " << time_string(init_time) << endl << endl;
 
   // if we only wanted to initialize, then we can exit now
   if (only_init) return 0;
