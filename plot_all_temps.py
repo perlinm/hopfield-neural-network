@@ -25,9 +25,9 @@ def NPB(file_name):
 
 # identify and organize data files
 files = {}
-energy_files = sorted(glob.glob("./data/energies-*-B-*"))
-weight_files = sorted(glob.glob("./data/weights-*-B-*"))
-distance_files = sorted(glob.glob("./data/distances-*-B-*"))
+energy_files = sorted(glob.glob("./data/energies-*-B*"))
+weight_files = sorted(glob.glob("./data/weights-*-B*"))
+distance_files = sorted(glob.glob("./data/distances-*-B*"))
 for energy_file in energy_files:
     weight_matches = [ weight_file for weight_file in weight_files
                        if weight_file.split("-")[1:] == energy_file.split("-")[1:] ]
