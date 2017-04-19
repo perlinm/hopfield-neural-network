@@ -57,7 +57,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     ;
 
   bool fixed_temp;
-  double input_beta_cap;
+  double input_temp;
   int log10_iterations;
   int init_factor;
   int print_time;
@@ -67,13 +67,11 @@ int main(const int arg_num, const char *arg_vec[]) {
   simulation_options.add_options()
     ("fixed_T", po::value<bool>(&fixed_temp)->default_value(false)->implicit_value(true),
      "run a fixed-temperature simulation")
-    ("beta_cap", po::value<double>(&input_beta_cap)->default_value(1),
-     "maximum (if positive) or minimum (if negative) inverse temperature"
-     " of interest in the simulation")
-    ("log10_iterations", po::value<int>(&log10_iterations)->default_value(7),
+    ("temp", po::value<double>(&input_temp)->default_value(1), "simulation temperature")
+    ("log10_iterations", po::value<int>(&log10_iterations)->default_value(5),
      "log10 of the number of iterations to simulate")
     ("init_factor", po::value<int>(&init_factor)->default_value(1),
-     "run for nodes * pattern_number * 10^(init_factor) iterations"
+     "run for pattern_number * 10^(init_factor) iterations"
      " per initialization cycle")
     ("print_time", po::value<int>(&print_time)->default_value(30),
      "number of minutes between intermediate data file dumps")
@@ -87,9 +85,9 @@ int main(const int arg_num, const char *arg_vec[]) {
   all_temps_options.add_options()
     ("only_init", po::value<bool>(&only_init)->default_value(false)->implicit_value(true),
      "quit after initialization")
-    ("sample_error", po::value<double>(&target_sample_error)->default_value(0.01,"0.01"),
+    ("sample_error", po::value<double>(&target_sample_error)->default_value(0.02,"0.02"),
      "the initialization routine terminates when it achieves this"
-     " expected fractional sample error at an inverse temperature beta_cap")
+     " expected fractional sample error at the simulation temperature")
     ;
 
   string data_dir;
@@ -141,12 +139,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   assert(init_factor > 0);
 
   // make sure that iteration counters/factors aren't too large
-  assert(log10_iterations < log10(LONG_MAX));
+  assert(log10(nodes) + log10_iterations < log10(LONG_MAX));
   assert(log10(nodes) + log10(pattern_number) + init_factor < log10(LONG_MAX));
-
-  // if we're doing an infinite temperature simulation,
-  //   we don't need the machinery of weights, etc.
-  if (input_beta_cap == 0) fixed_temp = true;
 
   // we can specify either nodes, or a pattern file; not both
   if (!nodes && pattern_file.empty()) {
@@ -217,15 +211,15 @@ int main(const int arg_num, const char *arg_vec[]) {
   nodes = patterns[0].size();
   pattern_number = patterns.size();
 
-  // make a hash of the patterns and target sample error to identify this simulation
+  // make a hash of the temperature, patterns, and (if appropriate) target sample error
+  //   to identify this simulation
   const size_t hash = [&]() -> size_t {
-    size_t running_hash = 0;
+    size_t running_hash = input_temp;
     for (int pp = 0; pp < pattern_number; pp++) {
       for (int nn = 0; nn < nodes; nn++) {
         bo::hash_combine(running_hash, size_t(patterns[pp][nn]));
       }
     }
-    bo::hash_combine(running_hash, input_beta_cap);
     if (!fixed_temp) {
       bo::hash_combine(running_hash, target_sample_error);
     }
@@ -233,12 +227,12 @@ int main(const int arg_num, const char *arg_vec[]) {
   }();
 
   // suffix to all data files read/written by this simulation
-  const string beta_tag = ("-" + string(fixed_temp ? "f" : "") + "B"
-                           + string(input_beta_cap < 0 ? "n" : "")
-                           + to_string(int(round(abs(input_beta_cap)))));
+  const string temp_tag = ("-" + string(fixed_temp ? "f" : "") + "100T"
+                           + string(input_temp < 0 ? "n" : "")
+                           + to_string(int(round(100*input_temp))));
   const string node_tag = "-N" + to_string(nodes);
   const string pattern_tag = "-P" + to_string(pattern_number);
-  const string file_suffix = (node_tag + pattern_tag + beta_tag
+  const string file_suffix = (node_tag + pattern_tag + temp_tag
                               + "-h" + to_string(hash) + ".txt");
 
   if (print_suffix) {
@@ -269,22 +263,23 @@ int main(const int arg_num, const char *arg_vec[]) {
                      << "# energy_scale: " << ns.network.energy_scale << endl
                      << "# energy_range: " << ns.energy_range << endl
                      << "# max_de: " << ns.max_de << endl
-                     << "# beta_cap: " << input_beta_cap << endl
-                     << "# target_sample_error: " << target_sample_error << endl;
+                     << "# input_temp: " << input_temp << endl;
+  if (!fixed_temp) {
+    cout << "# target_sample_error: " << target_sample_error << endl;
+  }
   const string file_header = file_header_stream.str();
 
   // inverse temperature in units compatible with that for our energies
-  const double beta_cap = input_beta_cap * ns.network.energy_scale / ns.network.nodes;
+  const double temp = input_temp * ns.network.nodes / ns.network.energy_scale;
 
-  // number of iterations per initialization cycle
-  const long iterations_per_cycle
+  // number of moves per initialization cycle
+  const long moves_per_init_cycle
     = ns.network.nodes * ns.pattern_number * pow(10, init_factor);
-  assert(iterations_per_cycle > 0);
 
   // print some info about the simulation
   cout << "nodes: " << ns.network.nodes << endl
        << "pattern number: " << ns.pattern_number << endl
-       << "inverse temperature: " << input_beta_cap << endl
+       << "temperature: " << input_temp << endl
        << "energy scale: " << ns.network.energy_scale << endl
        << "maximum energy: " << ns.network.max_energy << endl
        << "maximum energy change: " << ns.network.max_energy_change << endl
@@ -309,7 +304,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     // initialize for some time in order to (approximately) equilibriate
     int current_energy = ns.energy(); // energy of the last state
     assert(current_energy < ns.energy_range);
-    for (long ii = 0; ii < iterations_per_cycle; ii++) {
+    for (long ii = 0; ii < moves_per_init_cycle; ii++) {
 
       // pick a random node to maybe flip,
       //   and compute the energy associated with its current state
@@ -317,7 +312,7 @@ int main(const int arg_num, const char *arg_vec[]) {
       const int energy_change = ns.node_flip_energy_change(node);
 
       // if we pass a probability test, accept the move
-      if (rnd(generator) < ns.move_probability(current_energy, energy_change, beta_cap)) {
+      if (rnd(generator) < ns.move_probability(current_energy, energy_change, temp)) {
         ns.state[node] = !ns.state[node];
         current_energy += energy_change;
       }
@@ -332,7 +327,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     if (!fs::exists(weights_file)) {
 
       cout << "starting all-temperature initialization routine..." << endl
-           << "iterations per cycle: " << iterations_per_cycle << endl;
+           << "moves per initialization cycle: " << moves_per_init_cycle << endl;
 
       if (fs::exists(transitions_file)) {
         ns.read_transitions_file(transitions_file);
@@ -342,14 +337,14 @@ int main(const int arg_num, const char *arg_vec[]) {
 
       // number of initialization cycles we have finished
       int cycles = 0;
-      // expected fractional error in sample count at an inverse temperature beta
+      // expected fractional error in sample count at the simulation temperature
       double sample_error;
 
       int new_energy; // energy of the state we move into
       int current_energy = ns.energy(); // energy of the last state
       assert(current_energy < ns.energy_range);
       do {
-        for (long ii = 0; ii < iterations_per_cycle; ii++) {
+        for (long ii = 0; ii < moves_per_init_cycle; ii++) {
 
           // pick a random node to maybe flip,
           //   and compute the energy associated with its current state
@@ -361,8 +356,7 @@ int main(const int arg_num, const char *arg_vec[]) {
           // this update should happen regardless of whether we make the move
           ns.update_transition_histogram(current_energy, energy_change);
 
-          if ((beta_cap > 0 && energy_change <= 0)
-              || (beta_cap < 0 && energy_change >= 0)) {
+          if ((temp > 0 && energy_change <= 0) || (temp < 0 && energy_change >= 0)) {
             // always accept moves to a lower energy in a positive temperature simulation,
             //   and "" higher energy "" negative temperature ""
             ns.state[node] = !ns.state[node];
@@ -401,7 +395,7 @@ int main(const int arg_num, const char *arg_vec[]) {
               //     temperature of interest in this simulation;
               //     we don't want to oversample E_i relative to E_f
               const double sample_floor = 1.0/backward_moves;
-              const double boltzmann_floor = exp(-energy_change * beta_cap);
+              const double boltzmann_floor = exp(-energy_change / temp);
               const double min_probability = max(sample_floor, boltzmann_floor);
 
               return max(flux_ratio, min_probability);
@@ -432,23 +426,23 @@ int main(const int arg_num, const char *arg_vec[]) {
         cycles++;
         ns.compute_dos_from_transitions();
 
-        // compute the expected fractional sample error at an inverse temperature beta_cap
-        sample_error = ns.fractional_sample_error(beta_cap);
+        // compute the expected fractional sample error at the simulation temperature
+        sample_error = ns.fractional_sample_error(temp);
 
         cout << fixed << setprecision(ceil(-log10(target_sample_error)) + 3)
              << sample_error << " " << cycles << endl;
 
         // write energy and transition data files
         const string header = (file_header +
-                               "# initialization iterations: " +
-                               to_string(cycles * iterations_per_cycle) + "\n");
+                               "# initialization moves: " +
+                               to_string(cycles * moves_per_init_cycle) + "\n");
         ns.write_energy_file(energy_file, header);
         ns.write_transitions_file(transitions_file, header);
 
         // loop until we satisfy the end condition for initialization
       } while (sample_error > target_sample_error);
 
-      ns.compute_weights_from_dos(beta_cap);
+      ns.compute_weights_from_dos(temp);
       ns.write_weights_file(weights_file, file_header);
 
     } else { // the weights file already exists, so read it in
@@ -486,7 +480,8 @@ int main(const int arg_num, const char *arg_vec[]) {
   int new_energy; // energy of the state we move into
   int current_energy = ns.energy(); // energy of the last state
   assert(current_energy < ns.energy_range);
-  for (long ii = 0; ii < pow(10,log10_iterations); ii++) {
+  long simulation_moves = ns.network.nodes * pow(10,log10_iterations);
+  for (long ii = 0; ii < simulation_moves; ii++) {
 
     // pick a random node to maybe flip,
     //   and compute the energy associated with its current state
@@ -494,7 +489,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     const int energy_change = ns.node_flip_energy_change(node);
 
     // if we pass a probability test, accept the move
-    if (rnd(generator) < ns.move_probability(current_energy, energy_change, beta_cap)) {
+    if (rnd(generator) < ns.move_probability(current_energy, energy_change, temp)) {
       ns.state[node] = !ns.state[node];
       new_energy = current_energy + energy_change;
     } else {
@@ -518,9 +513,9 @@ int main(const int arg_num, const char *arg_vec[]) {
 
     // if enough time has passed, write data files
     if ( difftime(time(NULL), last_data_print_time) > print_time * 60 ) {
-      cout << "iterations: " << ii << endl;
+      cout << "moves: " << ii << endl;
       const string header = (file_header +
-                             "# iterations: " + to_string((long)ii) + "\n");
+                             "# moves: " + to_string(ii) + "\n");
       ns.write_energy_file(energy_file, header);
       ns.write_distance_file(distance_file, header);
       last_data_print_time = time(NULL);
@@ -529,8 +524,8 @@ int main(const int arg_num, const char *arg_vec[]) {
 
   // write final data files
   cout << "simulation complete" << endl;
-  const string header = (file_header + "# iterations: "
-                         + to_string((long)pow(10,log10_iterations)) + "\n");
+  const string header = (file_header + "# moves: "
+                         + to_string(simulation_moves) + "\n");
   ns.write_energy_file(energy_file, header);
   ns.write_distance_file(distance_file, header);
   ns.write_state_file(state_file, header);

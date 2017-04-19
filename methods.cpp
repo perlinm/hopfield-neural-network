@@ -194,11 +194,11 @@ int network_simulation::node_flip_energy_change(const int node) const {
 // probability to accept a move
 double network_simulation::move_probability(const int current_energy,
                                             const int energy_change,
-                                            const double beta) {
+                                            const double temp) {
   if (!fixed_temp) {
     return exp(ln_weights[current_energy + energy_change] - ln_weights[current_energy]);
   } else {
-    return exp(-beta*energy_change);
+    return exp(-energy_change/temp);
   }
 }
 
@@ -388,12 +388,12 @@ void network_simulation::compute_dos_from_energy_histogram() {
 
 // construct weight array from the density of states
 // WARNING: assumes that the density of states is up to date
-void network_simulation::compute_weights_from_dos(const double beta_cap) {
+void network_simulation::compute_weights_from_dos(const double temp) {
   if (fixed_temp) return;
   // reset the weight array
   ln_weights = vector<double>(energy_range, 0);
 
-  if (beta_cap > 0) {
+  if (temp > 0) {
     // if we care about positive temperatures, then we are interested in low energies
     // identify the lowest energy we have seen
     int lowest_seen_energy = 0;
@@ -405,9 +405,9 @@ void network_simulation::compute_weights_from_dos(const double beta_cap) {
     }
 
     // in the relevant range of observed energies, set weights appropriately,
-    //   but never set any weight higher than we would at an inverse temperature beta_cap
+    //   but never set any weight higher than we would at the simulation temperature
     double excess_weight = 0;
-    const double max_diff = energy_range * beta_cap;
+    const double max_diff = energy_range / temp;
     for (int ee = entropy_peak - 1; ee >= lowest_seen_energy; ee--) {
       ln_weights[ee] = -ln_dos[ee];
       const double diff = ln_weights[ee] - ln_weights[ee+1];
@@ -419,10 +419,10 @@ void network_simulation::compute_weights_from_dos(const double beta_cap) {
     // below all observed energies, use fixed temperature weights
     for (int ee = 0; ee < lowest_seen_energy; ee++) {
       ln_weights[ee] = (-ln_dos[lowest_seen_energy]
-                        + (lowest_seen_energy - ee) * beta_cap);
+                        + (lowest_seen_energy - ee) / temp);
     }
 
-  } else { // if beta_cap < 0
+  } else { // if temp < 0
 
     // if we care about negative temperatures, then we are interested in high energies
     // identify the highest energy we have seen
@@ -435,9 +435,9 @@ void network_simulation::compute_weights_from_dos(const double beta_cap) {
     }
 
     // in the relevant range of observed energies, set weights appropriately
-    //   but never set any weight higher than we would at an inverse temperature beta_cap
+    //   but never set any weight higher than we would at the simulation temperature
     double excess_weight = 0;
-    const double max_diff = - energy_range * beta_cap;
+    const double max_diff = - energy_range / temp;
     for (int ee = entropy_peak + 1; ee <= highest_seen_energy; ee++) {
       ln_weights[ee] = -ln_dos[ee];
       const double diff = ln_weights[ee] - ln_weights[ee-1];
@@ -449,20 +449,20 @@ void network_simulation::compute_weights_from_dos(const double beta_cap) {
     // above all observed energies, use fixed temperature weights
     for (int ee = highest_seen_energy + 1; ee < energy_range; ee++) {
       ln_weights[ee] = (-ln_dos[highest_seen_energy]
-                        + (highest_seen_energy - ee) * beta_cap);
+                        + (highest_seen_energy - ee) / temp);
     }
   }
 
 }
 
-// expectation value of fractional sample error at a given inverse temperature
+// expectation value of fractional sample error at the simulation temperature
 // WARNING: assumes that the density of states is up to date
-double network_simulation::fractional_sample_error(const double beta_cap) const {
+double network_simulation::fractional_sample_error(const double temp) const {
 
   // determine the lowest and highest energies we care about
   int lowest_energy;
   int highest_energy;
-  if (beta_cap > 0) { // we care about low energies
+  if (temp > 0) { // we care about low energies
     highest_energy = entropy_peak;
     // set lowest_energy to the lowest energy we have sampled
     for (int ee = 0; ee < entropy_peak; ee++) {
@@ -496,7 +496,7 @@ double network_simulation::fractional_sample_error(const double beta_cap) const 
       //   a constant factor, which means that it does not affect (error/normalization)
       const long double ln_dos_ee = ln_dos[ee] - ln_dos[mean_energy];
       const long double energy = ee - mean_energy;
-      const long double boltzmann_factor = expl(ln_dos_ee - energy * beta_cap);
+      const long double boltzmann_factor = expl(ln_dos_ee - energy / temp);
       error += boltzmann_factor/sqrt(sample_histogram[ee]);
       normalization += boltzmann_factor;
     }
@@ -589,7 +589,8 @@ void network_simulation::write_state_file(const string state_file,
                << "# state records: " << state_records << endl
                << "# state histogram: " << endl;
   for (int ii = 0; ii < network.nodes; ii++) {
-    state_stream << state_histograms[ii] << endl;
+    if (ii > 0) cout << " ";
+    state_stream << state_histograms[ii];
   }
   state_stream.close();
 }
@@ -623,7 +624,7 @@ void network_simulation::read_weights_file(const string weights_file) {
   int lowest_seen_energy, highest_seen_energy;
 
   // maximum temperature of interest specified in weights file
-  double beta_cap;
+  double temp;
 
   cout << "reading in weight array" << endl;
   ifstream input(weights_file.c_str());
@@ -635,9 +636,9 @@ void network_simulation::read_weights_file(const string weights_file) {
     line_stream >> word;
 
     if (word == "#") {
-      if (word.find("beta") != string::npos) {
+      if (word.find("input_temp") != string::npos) {
         line_stream >> word;
-        beta_cap = stod(word) * network.energy_scale / network.nodes;
+        temp = stod(word) * network.nodes / network.energy_scale;
       }
       continue;
     }
@@ -670,18 +671,18 @@ void network_simulation::read_weights_file(const string weights_file) {
   }
 
   // set entropy peak and fill in the rest of the weight array
-  if (beta_cap > 0) {
+  if (temp > 0) {
     entropy_peak = first_zero;
     for (int ee = 0; ee < lowest_seen_energy; ee++) {
       ln_weights[ee] = (ln_weights[lowest_seen_energy]
-                        + (lowest_seen_energy - ee) * beta_cap);
+                        + (lowest_seen_energy - ee) / temp);
     }
 
-  } else { // if beta_cap < 0
+  } else { // if temp < 0
     entropy_peak = last_zero;
     for (int ee = highest_seen_energy + 1; ee < energy_range; ee++) {
       ln_weights[ee] = (ln_weights[highest_seen_energy]
-                        + (highest_seen_energy - ee) * beta_cap);
+                        + (highest_seen_energy - ee) / temp);
     }
   }
 

@@ -152,7 +152,7 @@ struct network_simulation {
 
   // probability to accept a move
   double move_probability(const int current_energy, const int energy_change,
-                          const double beta);
+                          const double temp);
 
   // initialize all tables and histograms
   void initialize_histograms();
@@ -171,11 +171,11 @@ struct network_simulation {
 
   // construct weight array from the density of states
   // WARNING: assumes that the density of states is up to date
-  void compute_weights_from_dos(const double beta);
+  void compute_weights_from_dos(const double temp);
 
-  // expectation value of fractional sample error at a given inverse temperature
+  // expectation value of fractional sample error at the simulation temperature
   // WARNING: assumes that the density of states is up to date
-  double fractional_sample_error(const double beta) const;
+  double fractional_sample_error(const double temp) const;
 
   // -------------------------------------------------------------------------------------
   // Writing/reading data files
