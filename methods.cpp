@@ -573,10 +573,8 @@ void network_simulation::write_distance_file(const string distance_file,
     distance_stream << "# distance records: " << fixed_temp_distance_records << endl
                     << "# distance logs: " << endl;
     for (int pp = 0; pp < pattern_number; pp++) {
-      if (pp > 0) distance_stream << " ";
-      distance_stream << fixed_temp_distance_logs[pp];
+      distance_stream << fixed_temp_distance_logs[pp] << endl;
     }
-    distance_stream << endl;
   }
   distance_stream.close();
 }
@@ -589,8 +587,7 @@ void network_simulation::write_state_file(const string state_file,
                << "# state records: " << state_records << endl
                << "# state histogram: " << endl;
   for (int ii = 0; ii < network.nodes; ii++) {
-    if (ii > 0) state_stream << " ";
-    state_stream << state_histograms[ii];
+    state_stream << state_histograms[ii] << endl;
   }
   state_stream.close();
 }
