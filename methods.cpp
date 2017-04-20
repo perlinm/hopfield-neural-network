@@ -80,6 +80,7 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
   // fix up max_energy so that for any energy E we observe,
   //   (E + max_energy) is divisible by energy_scale
   max_energy -= (max_energy + energy(patterns[0])) % energy_scale;
+  max_energy += energy_scale;
 
 };
 

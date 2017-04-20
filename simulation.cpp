@@ -498,6 +498,7 @@ int main(const int arg_num, const char *arg_vec[]) {
     } else {
       new_energy = current_energy;
     }
+    assert(new_energy >= 0);
     assert(new_energy < ns.energy_range);
 
     ns.energy_histogram[new_energy]++;
