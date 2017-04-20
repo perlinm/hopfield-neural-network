@@ -164,12 +164,14 @@ int main(const int arg_num, const char *arg_vec[]) {
   // initialize random number generator
   uniform_real_distribution<double> rnd(0.0,1.0); // uniform distribution on [0,1)
   mt19937_64 generator; // use the 64-bit Mersenne Twister 19937 generator
+  seed += pattern_seed;
+  pattern_seed += LONG_MAX/2;
 
   // -------------------------------------------------------------------------------------
   // Construct patterns for network and initialize network simulation
   // -------------------------------------------------------------------------------------
 
-  generator.seed(pattern_seed+LONG_MAX/2);
+  generator.seed(pattern_seed);
   vector<vector<bool>> patterns;
 
   // if we are using a pattern file, read it in
