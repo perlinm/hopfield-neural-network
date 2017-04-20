@@ -116,8 +116,8 @@ struct network_simulation {
   //   the mean distance from pattern pp at the energy ee
   // dividing fixed_temp_distance_logs[pp] by distance_records tells us
   //   the mean distance from pattern pp at the simulation temperature
-  vector<vector<long>> all_temp_distance_logs;
-  vector<long> fixed_temp_distance_logs;
+  vector<long> all_temp_distance_logs;
+  long fixed_temp_distance_log;
 
   // constructor for the network simulation object
   network_simulation(const vector<vector<bool>>& patterns,

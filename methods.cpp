@@ -211,11 +211,7 @@ void network_simulation::initialize_histograms() {
     visit_log = vector<bool>(energy_range, true);
     sample_histogram = vector<long>(energy_range, 0);
     all_temp_distance_records = vector<long>(energy_range, 0);
-
-    all_temp_distance_logs = vector<vector<long>>(energy_range);
-    for (int ee = 0; ee < energy_range; ee++) {
-      all_temp_distance_logs[ee] = vector<long>(pattern_number, 0);
-    }
+    all_temp_distance_logs = vector<long>(energy_range, 0);
 
     transition_histogram = vector<vector<long>>(energy_range);
     for (int ee = 0; ee < energy_range; ee++) {
@@ -223,31 +219,27 @@ void network_simulation::initialize_histograms() {
     }
 
   } else { // if fixed_temp
-    fixed_temp_distance_logs = vector<long>(pattern_number, 0);
     state_histograms = vector<long>(network.nodes, 0);
   }
 }
 
 void network_simulation::update_distance_logs(const int energy) {
-  // for each pattern
+  int min_distance = network.nodes;
+  // for each pattern pp
   for (int pp = 0; pp < pattern_number; pp++) {
-    // find the distance between the current state and patterns[pp]
+    // find overlap between the current state and patterns[pp]
     int overlap = 0;
     for (int ii = 0; ii < network.nodes; ii++) {
       overlap += (state[ii] == patterns[pp][ii]);
     }
-    const int distance = min(overlap, network.nodes - overlap);
-    // add distance from pattern[pp] to the distance histogram
-    if (!fixed_temp) {
-      all_temp_distance_logs[energy][pp] += distance;
-    } else {
-      fixed_temp_distance_logs[pp] += distance;
-    }
+    min_distance = min({min_distance, overlap, network.nodes - overlap});
   }
-  // increment the number of times we have recorded distance
+  // add to distance logs
   if (!fixed_temp) {
     all_temp_distance_records[energy]++;
+    all_temp_distance_logs[energy] += min_distance;
   } else {
+    fixed_temp_distance_log += min_distance;
     fixed_temp_distance_records++;
   }
 }
@@ -563,18 +555,13 @@ void network_simulation::write_distance_file(const string distance_file,
     for (int ee = 0; ee < energy_range; ee++) {
       if (all_temp_distance_records[ee] == 0)  continue;
       distance_stream << network.actual_energy(ee) << " "
-                      << all_temp_distance_records[ee];
-      for (int pp = 0; pp < pattern_number; pp++) {
-        distance_stream << " " << all_temp_distance_logs[ee][pp];
-      }
-      distance_stream << endl;
+                      << all_temp_distance_records[ee] << " "
+                      << all_temp_distance_logs[ee] << endl;
     }
   } else {
-    distance_stream << "# distance records: " << fixed_temp_distance_records << endl
-                    << "# distance logs: " << endl;
-    for (int pp = 0; pp < pattern_number; pp++) {
-      distance_stream << fixed_temp_distance_logs[pp] << endl;
-    }
+    distance_stream << "# records, distance log " << endl
+                    << fixed_temp_distance_records << " "
+                    << fixed_temp_distance_log << endl;
   }
   distance_stream.close();
 }
@@ -756,35 +743,23 @@ void network_simulation::print_energy_data() const {
 
 // print expectation value of distances from each pattern at each energy
 void network_simulation::print_distances() const {
-  const int distance_dec = 6; // decimal precision of expected distance values
   if (!fixed_temp) {
-    cout << "energy <d_1>, <d_2>, ..., <d_p>" << endl;
+    cout << "energy distance" << endl;
     const int energy_width = log10(network.max_energy) + 2;
     for (int ee = energy_range - 1; ee >= 0; ee--) {
-      // check that we have sampled distances this energy
+      // check that we have sampled distance this energy
       const long observations = all_temp_distance_records[ee];
       if (observations == 0) continue;
 
-      cout << setw(energy_width) << network.actual_energy(ee);
-      for (int pp = 0; pp < pattern_number; pp++) {
-        const double val = double(all_temp_distance_logs[ee][pp]) / observations;
-        const int prec = distance_dec - int(max(log10(val),0.));
-        cout << " " << setw(distance_dec + 2) << setprecision(prec)
-             << val * 2 / network.nodes;
-      }
-      cout << endl;
+      const double val = double(all_temp_distance_logs[ee]) / observations;
+      cout << setw(energy_width)
+           << network.actual_energy(ee) << " "
+           << val * 2 / network.nodes << endl;
     }
   } else {
-    cout << "<d_1>, <d_2>, ..., <d_p>" << endl;
-    for (int pp = 0; pp < pattern_number; pp++) {
-      if (pp > 0) cout << " ";
-      const double val =
-        double(fixed_temp_distance_logs[pp]) / fixed_temp_distance_records;
-      const int prec = distance_dec - int(max(log10(val),0.));
-      cout << setw(distance_dec + 2) << setprecision(prec)
-           << val * 2 / network.nodes;
-    }
-    cout << endl;
+    const double val =
+      double(fixed_temp_distance_log) / fixed_temp_distance_records;
+    cout << "distance: " << val * 2 / network.nodes << endl;
   }
 }
 
