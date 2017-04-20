@@ -158,12 +158,16 @@ int main(const int arg_num, const char *arg_vec[]) {
   uniform_real_distribution<double> rnd(0.0,1.0); // uniform distribution on [0,1)
   mt19937_64 generator; // use the 64-bit Mersenne Twister 19937 generator
 
-  // change the "regular" random number seed so that we never initialize identical states
-  //   when either of the seeds is different
-  seed += pattern_seed;
+  // randomize seeds using the number of nodes and patterns
+  size_t seed_hash = seed;
+  bo::hash_combine(seed_hash, pattern_seed);
+  bo::hash_combine(seed_hash, nodes);
+  bo::hash_combine(seed_hash, pattern_number);
+  seed += seed_hash;
+  pattern_seed += seed_hash;
 
-  // move pattern_seed as far from the regular seed as we can to avoid collisions
-  pattern_seed += LONG_MAX;
+  // move pattern_seed far from the regular seed in order to avoid collisions
+  pattern_seed +=  nodes + pattern_number + LONG_MAX;
 
   // -------------------------------------------------------------------------------------
   // Construct patterns for network and initialize network simulation
