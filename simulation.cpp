@@ -265,7 +265,7 @@ int main(const int arg_num, const char *arg_vec[]) {
                      << "# max_de: " << ns.max_de << endl
                      << "# input_temp: " << input_temp << endl;
   if (!fixed_temp) {
-    cout << "# target_sample_error: " << target_sample_error << endl;
+    file_header_stream << "# target_sample_error: " << target_sample_error << endl;
   }
   const string file_header = file_header_stream.str();
 
