@@ -260,10 +260,10 @@ int main(const int arg_num, const char *arg_vec[]) {
   stringstream file_header_stream;
   file_header_stream << "# nodes: " << ns.network.nodes << endl
                      << "# patterns: " << ns.pattern_number << endl
+                     << "# input_temp: " << input_temp << endl
                      << "# energy_scale: " << ns.network.energy_scale << endl
                      << "# energy_range: " << ns.energy_range << endl
-                     << "# max_de: " << ns.max_de << endl
-                     << "# input_temp: " << input_temp << endl;
+                     << "# max_de: " << ns.max_de << endl;
   if (!fixed_temp) {
     file_header_stream << "# target_sample_error: " << target_sample_error << endl;
   }
@@ -282,8 +282,11 @@ int main(const int arg_num, const char *arg_vec[]) {
        << "temperature: " << input_temp << endl
        << "energy scale: " << ns.network.energy_scale << endl
        << "maximum energy: " << ns.network.max_energy << endl
-       << "maximum energy change: " << ns.network.max_energy_change << endl
-       << endl;
+       << "maximum energy change: " << ns.network.max_energy_change << endl;
+  if (!fixed_temp) {
+    cout << "target sample error: " << target_sample_error << endl;
+  }
+  cout << endl;
 
   if (!suppress) {
     ns.print_patterns();
