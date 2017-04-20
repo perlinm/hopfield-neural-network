@@ -554,7 +554,7 @@ void network_simulation::write_distance_file(const string distance_file,
   ofstream distance_stream(distance_file);
   distance_stream << file_header << endl;
   if (!fixed_temp) {
-    distance_stream << "# energy, distance records, distance log..." << endl;
+    distance_stream << "# energy, records, distance log" << endl;
     for (int ee = 0; ee < energy_range; ee++) {
       if (all_temp_distance_records[ee] == 0)  continue;
       distance_stream << network.actual_energy(ee) << " "
