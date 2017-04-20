@@ -8,6 +8,7 @@ max_B = 20
 max_temp = 2
 temp_steps = 100
 temps = array(linspace(1/max_B, max_temp, temp_steps))
+fig_dir = "./figures/"
 
 # dictionary keys for energy, weight, and distance files
 E = "E"
@@ -140,28 +141,28 @@ if "1d" in sys.argv:
     ylabel("$U/N$")
     legend(loc="best")
     tight_layout()
-    savefig("u-convergence.pdf")
+    savefig(fig_dir+"u-convergence.pdf")
 
     figure("cv_fig")
     xlabel("$T$")
     ylabel("$C_V/N$")
     legend(loc="best")
     tight_layout()
-    savefig("cv-convergence.pdf")
+    savefig(fig_dir+"cv-convergence.pdf")
 
     figure("s_fig")
     xlabel("$T$")
     ylabel("$S/N$")
     legend(loc="best")
     tight_layout()
-    savefig("s-convergence.pdf")
+    savefig(fig_dir+"s-convergence.pdf")
 
     figure("d_fig")
     xlabel("$T$")
     ylabel("$D/N$")
     legend(loc="best")
     tight_layout()
-    savefig("d-convergence.pdf")
+    savefig(fig_dir+"d-convergence.pdf")
 
 ######### 2D plots ##########
 
@@ -190,7 +191,7 @@ if "2d" in sys.argv:
     ylabel("$T$")
     colorbar()
     tight_layout()
-    savefig("u-color.pdf")
+    savefig(fig_dir+"u-phase.pdf")
 
     figure("cv_2d_fig")
     pcolor(p_borders/N, temp_borders, u_cv_s_d[1,:,:])
@@ -199,7 +200,7 @@ if "2d" in sys.argv:
     ylabel("$T$")
     colorbar()
     tight_layout()
-    savefig("cv-color.pdf")
+    savefig(fig_dir+"cv-phase.pdf")
 
     figure("s_2d_fig")
     pcolor(p_borders/N, temp_borders, u_cv_s_d[2,:,:])
@@ -208,7 +209,7 @@ if "2d" in sys.argv:
     ylabel("$T$")
     colorbar()
     tight_layout()
-    savefig("s-color.pdf")
+    savefig(fig_dir+"s-phase.pdf")
 
     figure("d_2d_fig")
     pcolor(p_borders/N, temp_borders, u_cv_s_d[3,:,:])
@@ -217,7 +218,7 @@ if "2d" in sys.argv:
     ylabel("$T$")
     colorbar()
     tight_layout()
-    savefig("d-color.pdf")
+    savefig(fig_dir+"d-phase.pdf")
 
 if "show" in sys.argv:
     show()
