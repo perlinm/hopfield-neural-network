@@ -54,17 +54,14 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
     }
   }
 
-  // determine the maximum energy change possible in one move, as well as
-  //   the energy resolution (energy_scale) needed to keep track of all energies
+  // determine the maximum energy change possible in one move
   max_energy_change = 0;
-  energy_scale = 0;
   for (int ii = 0; ii < nodes; ii++) {
     int node_energy = 0;
     for (int jj = 0; jj < nodes; jj++) {
       node_energy += 2*abs(couplings[ii][jj]);
     }
     max_energy_change = max(node_energy, max_energy_change);
-    energy_scale = gcd(node_energy, energy_scale);
   }
 
   // compute an upper bound on the maximum energy achievable by network
@@ -79,6 +76,7 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
   }
   // fix up max_energy so that for any energy E we observe,
   //   (E + max_energy) is divisible by energy_scale
+  energy_scale = 2;
   max_energy -= (max_energy + energy(patterns[0])) % energy_scale;
   max_energy += energy_scale;
 
@@ -494,6 +492,7 @@ double network_simulation::fractional_sample_error(const double temp) const {
       normalization += boltzmann_factor;
     }
   }
+  if (error == 0) return 2;
   return error/normalization;
 }
 
