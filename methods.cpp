@@ -589,7 +589,7 @@ void network_simulation::write_state_file(const string state_file,
                << "# state records: " << state_records << endl
                << "# state histogram: " << endl;
   for (int ii = 0; ii < network.nodes; ii++) {
-    if (ii > 0) cout << " ";
+    if (ii > 0) state_stream << " ";
     state_stream << state_histograms[ii];
   }
   state_stream.close();
