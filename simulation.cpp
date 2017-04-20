@@ -169,7 +169,7 @@ int main(const int arg_num, const char *arg_vec[]) {
   // Construct patterns for network and initialize network simulation
   // -------------------------------------------------------------------------------------
 
-  generator.seed(pattern_seed);
+  generator.seed(pattern_seed+LONG_MAX/2);
   vector<vector<bool>> patterns;
 
   // if we are using a pattern file, read it in
