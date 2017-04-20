@@ -539,7 +539,9 @@ void network_simulation::write_energy_file(const string energy_file,
                                            const string file_header) const {
   ofstream energy_stream(energy_file);
   energy_stream << file_header << endl
-                << "# energy, energy histogram, sample histogram" << endl;
+                << "# energy, energy histogram";
+  if (!fixed_temp) energy_stream << ", sample_histogram";
+  energy_stream << endl;
   for (int ee = 0; ee < energy_range; ee++) {
     if (energy_histogram[ee] == 0)  continue;
     energy_stream << network.actual_energy(ee) << " " << energy_histogram[ee];
