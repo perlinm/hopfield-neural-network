@@ -49,7 +49,7 @@ hopfield_network::hopfield_network(const vector<vector<bool>>& patterns) {
     for (int jj = 0; jj < nodes; jj++) {
       if (jj == ii) continue;
       for (int pp = 0, size = patterns.size(); pp < size; pp++) {
-        couplings[ii][jj] += 2 * !(patterns[pp][ii] ^ patterns[pp][jj]) - 1;
+        couplings[ii][jj] += 2 * (patterns[pp][ii] == patterns[pp][jj]) - 1;
       }
     }
   }
@@ -91,7 +91,7 @@ int hopfield_network::energy(const vector<bool>& state) const {
   for (int ii = 0; ii < nodes; ii++) {
     const bool node_state = state[ii];
     for (int jj = ii + 1; jj < nodes; jj++) {
-      energy -= couplings[ii][jj] * (2 * !(node_state ^ state[jj]) - 1);
+      energy -= couplings[ii][jj] * (2 * (node_state == state[jj]) - 1);
     }
   }
   return (energy + max_energy) / energy_scale;
@@ -188,7 +188,7 @@ int network_simulation::node_flip_energy_change(const int node) const {
   const bool node_state = state[node];
   int node_energy = 0;
   for (int ii = 0; ii < network.nodes; ii++) {
-    node_energy -= network.couplings[node][ii] * (2 * !(node_state ^ state[ii]) - 1);
+    node_energy -= network.couplings[node][ii] * (2 * (node_state == state[ii]) - 1);
   }
   return - 2 * node_energy / network.energy_scale;
 }
