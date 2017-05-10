@@ -46,10 +46,6 @@ for energy_file in energy_files:
 
     N, P, T = NPT(energy_file)
 
-    ################################################################################
-    if 100*T % 10 != 0: continue
-    ################################################################################
-
     if N not in files.keys():
         files[N] = {}
     if P not in files[N].keys():
@@ -90,11 +86,12 @@ def compute_q_m_cv(file_set):
 
     return array([q_param, m_param, cv])
 
-def mean_q_m_cv(N, P, T):
-    mean_q_m_cv = zeros(3)
-    for file_set in files[N][P][T]:
-        mean_q_m_cv += compute_q_m_cv(file_set)
-    return mean_q_m_cv / len(files[N][P][T])
+def mean_std_q_m_cv(N, P, T):
+    file_sets = len(files[N][P][T])
+    q_m_cv = zeros((3,file_sets))
+    for ii in range(file_sets):
+        q_m_cv[:,ii] = compute_q_m_cv(files[N][P][T][ii])
+    return mean(q_m_cv,1), std(q_m_cv,1)
 
 def borders(array):
     borders = zeros(len(array)+1)
@@ -108,10 +105,6 @@ for N in sorted(files.keys()):
         if N not in plot_N:
             continue
 
-    q_name = "q-N{}.pdf".format(N)
-    m_name = "m-N{}.pdf".format(N)
-    cv_name = "cv-N{}.pdf".format(N)
-
     p_vals = array(sorted(files[N].keys()))
 
     t_set = set(files[N][p_vals[0]].keys())
@@ -119,43 +112,42 @@ for N in sorted(files.keys()):
         t_set = t_set.intersection(files[N][P].keys())
     t_vals = array(sorted(list(t_set)))
 
-    q_m_cv = zeros((3,len(t_vals),len(p_vals)))
+    mean_q_m_cv = zeros((3,len(t_vals),len(p_vals)))
+    std_q_m_cv = zeros((3,len(t_vals),len(p_vals)))
 
     for pp in range(len(p_vals)):
         print("P: {}".format(p_vals[pp]))
         for tt in range(len(t_vals)):
             print(" T: {}".format(t_vals[tt]))
-            q_m_cv[:,tt,pp] = mean_q_m_cv(N, p_vals[pp], t_vals[tt])
+            mean_q_m_cv[:,tt,pp], std_q_m_cv[:,tt,pp] \
+                = mean_std_q_m_cv(N, p_vals[pp], t_vals[tt])
 
     p_borders = borders(p_vals)/N
     t_borders = borders(t_vals)
 
-    figure(q_name)
-    pcolor(p_borders, t_borders, q_m_cv[0,:,:])
-    title("$q$ $(N={})$".format(N))
-    xlabel(r"$\alpha$")
-    ylabel("$T$")
-    colorbar()
-    tight_layout()
-    savefig(fig_dir+q_name)
+    tags = [ "q", "m", "c_V" ]
+    for ii in range(3):
+        basename = tags[ii] + "-N{}.pdf".format(N)
+        mean_name = "mean-" + basename
+        std_name = "std-" + basename
 
-    figure(m_name)
-    pcolor(p_borders, t_borders, q_m_cv[1,:,:])
-    title("$m$ $(N={})$".format(N))
-    xlabel(r"$\alpha$")
-    ylabel("$T$")
-    colorbar()
-    tight_layout()
-    savefig(fig_dir+m_name)
+        figure(mean_name)
+        pcolor(p_borders, t_borders, mean_q_m_cv[ii,:,:])
+        title("${}$ $(N={})$".format(tags[ii], N))
+        xlabel(r"$\alpha$")
+        ylabel("$T$")
+        colorbar()
+        tight_layout()
+        savefig(fig_dir+mean_name)
 
-    figure(cv_name)
-    pcolor(p_borders, t_borders, q_m_cv[2,:,:])
-    title("$c_V$ $(N={})$".format(N))
-    xlabel(r"$\alpha$")
-    ylabel("$T$")
-    colorbar()
-    tight_layout()
-    savefig(fig_dir+cv_name)
+        figure(std_name)
+        pcolor(p_borders, t_borders, std_q_m_cv[ii,:,:])
+        title("std(${}$) $(N={})$".format(tags[ii], N))
+        xlabel(r"$\alpha$")
+        ylabel("$T$")
+        colorbar()
+        tight_layout()
+        savefig(fig_dir+std_name)
 
 if "show" in sys.argv:
     show()
