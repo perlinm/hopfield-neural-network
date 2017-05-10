@@ -4,11 +4,21 @@ import glob, sys, os
 from pylab import *
 
 # some plot options
+font_size = 12
+font = {"family" : "serif",
+        "serif":["Computer Modern"],
+        "size" : font_size}
+rc("font",**font)
+params = {"legend.fontsize": font_size}
+rcParams.update(params)
+
 min_T = 0.05
 max_temp = 2
 temp_steps = 100
 temps = array(linspace(min_T, max_temp, temp_steps))
 
+minN = 30
+maxN = 120
 alpha1D = 0.1
 N2D = 100
 
@@ -39,6 +49,9 @@ energy_files = sorted(glob.glob(data_dir+"energies-*-100T*"))
 weight_files = sorted(glob.glob(data_dir+"weights-*-100T*"))
 distance_files = sorted(glob.glob(data_dir+"distances-*-100T*"))
 for energy_file in energy_files:
+    N, P, _ = NPT(energy_file)
+    if N < minN or N > maxN: continue
+
     weight_matches = [ weight_file for weight_file in weight_files
                        if id(weight_file) == id(energy_file) ]
     distance_matches = [ distance_file for distance_file in distance_files
@@ -52,7 +65,6 @@ for energy_file in energy_files:
     weight_file = weight_matches[0]
     distance_file = distance_matches[0]
 
-    N, P, _ = NPT(energy_file)
     if N not in files.keys():
         files[N] = {}
     if P not in files[N].keys():
